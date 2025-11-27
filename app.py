@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
 from datetime import datetime
-from sqlalchemy import func # Importiamo le funzioni di calcolo SQL
+from sqlalchemy import func
 import json
 import statistics 
 
@@ -13,9 +13,8 @@ app = Flask(__name__)
 # --- CONFIGURAZIONE SICUREZZA ---
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'chiave-segreta-sviluppo-locale')
 
-# --- CONFIGURAZIONE ADMIN (IMPORTANTE!) ---
-# Sostituisci "Matteo" con il nome utente esatto che userai tu.
-# Solo questo utente avrà i poteri di Super Admin.
+# --- CONFIGURAZIONE ADMIN ---
+# Sostituisci con il tuo username esatto
 ADMIN_USER = "matte" 
 
 database_url = os.environ.get('DATABASE_URL')
@@ -85,7 +84,6 @@ def register():
             flash('Nome utente già in uso.', 'danger')
             return redirect(url_for('register'))
 
-        # OTTIMIZZAZIONE SICUREZZA: Controllo Hardcoded
         if username == ADMIN_USER:
             role = 'admin'
             flash(f'Benvenuto Boss! Account Admin creato per {username}.', 'success')
@@ -142,45 +140,37 @@ def settings():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # OTTIMIZZAZIONE 1: PAGINAZIONE
-    # Recuperiamo il numero di pagina dall'URL (default pagina 1)
     page = request.args.get('page', 1, type=int)
-    per_page = 15 # Numero di trade per pagina
+    per_page = 15
 
     query = JournalEntry.query
     if current_user.role != 'admin':
         query = query.filter_by(user_id=current_user.id)
     
-    # Invece di .all(), usiamo .paginate()
-    # Ordiniamo per data decrescente (dal più recente)
     pagination = query.order_by(JournalEntry.date.desc()).paginate(page=page, per_page=per_page, error_out=False)
     
     user_pros = [p for p in (current_user.pros_settings.split(',') if current_user.pros_settings else []) if p]
     user_cons = [c for c in (current_user.cons_settings.split(',') if current_user.cons_settings else []) if c]
 
-    # Passiamo l'oggetto 'pagination' al template invece della lista intera
     return render_template('dashboard.html', pagination=pagination, admin_view=(current_user.role == 'admin'), user=current_user, user_pros=user_pros, user_cons=user_cons)
 
 @app.route('/statistics')
 @login_required
 def statistics_page():
-    # OTTIMIZZAZIONE 3: QUERY SQL DIRETTE (Più veloci)
-    
-    # Filtro base
+    # --- CORREZIONE: DEFINIAMO LA VARIABILE ADMIN_VIEW ---
+    admin_view = (current_user.role == 'admin')
+
     base_query = JournalEntry.query
-    if current_user.role != 'admin':
+    if not admin_view:
         base_query = base_query.filter_by(user_id=current_user.id)
     
-    # Scarichiamo tutti i trade SOLO per i grafici (necessario per equity curve)
-    # Per i KPI usiamo calcoli ottimizzati o Python su lista in memoria (visto che dobbiamo filtrare attivi)
     trades = base_query.order_by(JournalEntry.date.asc()).all()
 
     if not trades:
-        return render_template('statistics.html', no_data=True, user=current_user)
+        return render_template('statistics.html', no_data=True, user=current_user, admin_view=admin_view)
 
     active_trades = [t for t in trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
     
-    # Calcoli KPI
     wins = [t.result_percent for t in active_trades if t.outcome == 'Target']
     losses = [t.result_percent for t in active_trades if t.outcome == 'Stop Loss']
     
