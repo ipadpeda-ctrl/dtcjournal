@@ -16,12 +16,14 @@
                     {% if admin_view %}<span class="text-red-600 text-sm ml-2">(SUPER ADMIN)</span>{% endif %}
                 </h1>
             </div>
-            <div class="flex gap-4">
-                <a href="/statistics" class="bg-indigo-600 hover:bg-indigo-800 text-white font-bold py-2 px-4 rounded flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                    Vedi Statistiche
+            <div class="flex gap-3">
+                <a href="/settings" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded flex items-center gap-2">
+                    ⚙️ Impostazioni
                 </a>
-                <a href="/logout" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Logout</a>
+                <a href="/statistics" class="bg-indigo-600 hover:bg-indigo-800 text-white font-bold py-2 px-4 rounded flex items-center gap-2">
+                    📊 Statistiche
+                </a>
+                <a href="/logout" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Esci</a>
             </div>
         </div>
 
@@ -36,53 +38,92 @@
         {% endwith %}
 
         <div class="bg-white p-6 rounded shadow mb-8">
-            <h2 class="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Inserisci Nuova Operazione</h2>
-            <form action="/add_trade" method="POST" class="grid grid-cols-2 md:grid-cols-6 gap-4">
-                <input type="text" name="pair" placeholder="Coppia (es. XAUUSD)" class="border p-2 rounded w-full" required>
-                <input type="date" name="date" class="border p-2 rounded w-full" required>
-                <input type="time" name="time" class="border p-2 rounded w-full" required>
+            <h2 class="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Nuova Operazione</h2>
+            <form action="/add_trade" method="POST">
                 
-                <select name="direction" class="border p-2 rounded w-full">
-                    <option value="Long">Long</option>
-                    <option value="Short">Short</option>
-                </select>
-                
-                <select name="timeframe" class="border p-2 rounded w-full">
-                    <option value="" disabled selected>TF Ingresso</option>
-                    <option value="m15">m15</option>
-                    <option value="m5">m5</option>
-                    <option value="m3">m3</option>
-                    <option value="m1">m1</option>
-                </select>
-
-                <select name="emotions" class="border p-2 rounded w-full">
-                    <option value="" disabled selected>Emozione</option>
-                    <option value="ansia">Ansia</option>
-                    <option value="stress">Stress</option>
-                    <option value="paura">Paura</option>
-                    <option value="fretta">Fretta</option>
-                    <option value="tranquillo">Tranquillo</option>
-                    <option value="sicuro">Sicuro</option>
-                    <option value="calmo">Calmo</option>
-                </select>
-
-                <input type="number" step="0.01" name="risk_percent" placeholder="Rischio %" class="border p-2 rounded w-full">
-                <input type="number" step="0.01" name="rr_final" placeholder="RR Finale" class="border p-2 rounded w-full">
-                <select name="outcome" class="border p-2 rounded w-full">
-                    <option value="Target">Target</option>
-                    <option value="Stop Loss">Stop Loss</option>
-                    <option value="Breakeven">Breakeven</option>
-                </select>
-                <input type="number" step="0.01" name="result_percent" placeholder="Risultato %" class="border p-2 rounded w-full bg-yellow-50 font-bold border-yellow-300">
-                
-                <div class="md:col-span-3 grid grid-cols-2 gap-2">
-                    <input type="text" name="link1" placeholder="Link Screen 1 (es. Entry)" class="border p-2 rounded w-full">
-                    <input type="text" name="link2" placeholder="Link Screen 2 (es. Exit)" class="border p-2 rounded w-full">
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+                    <input type="text" name="pair" placeholder="Coppia (es. XAUUSD)" class="border p-2 rounded w-full" required>
+                    <input type="date" name="date" class="border p-2 rounded w-full" required>
+                    <input type="time" name="time" class="border p-2 rounded w-full" required>
+                    <select name="direction" class="border p-2 rounded w-full">
+                        <option value="Long">Long</option>
+                        <option value="Short">Short</option>
+                    </select>
+                    <select name="outcome" class="border p-2 rounded w-full bg-blue-50">
+                        <option value="Target">Target</option>
+                        <option value="Stop Loss">Stop Loss</option>
+                        <option value="Breakeven">Breakeven</option>
+                        <option value="Non Fillato">Non Fillato</option>
+                        <option value="Setup">Setup (Monitoraggio)</option>
+                    </select>
+                    <select name="emotions" class="border p-2 rounded w-full">
+                        <option value="" disabled selected>Emozione</option>
+                        <option value="ansia">Ansia</option>
+                        <option value="stress">Stress</option>
+                        <option value="paura">Paura</option>
+                        <option value="fretta">Fretta</option>
+                        <option value="tranquillo">Tranquillo</option>
+                        <option value="sicuro">Sicuro</option>
+                        <option value="calmo">Calmo</option>
+                    </select>
                 </div>
 
-                <textarea name="notes" placeholder="Note operative..." class="border p-2 rounded w-full md:col-span-6 h-16"></textarea>
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <input type="number" step="0.01" name="risk_percent" placeholder="Rischio %" class="border p-2 rounded w-full">
+                    <input type="number" step="0.01" name="rr_final" placeholder="RR Finale" class="border p-2 rounded w-full">
+                    <input type="number" step="0.01" name="result_percent" placeholder="Risultato %" class="border p-2 rounded w-full bg-yellow-50 font-bold border-yellow-300">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4 border-t border-b py-4">
+                    
+                    <div>
+                        <p class="font-bold text-sm text-gray-600 mb-2">Timeframes (Multi)</p>
+                        <div class="flex flex-wrap gap-2">
+                            {% for tf in ['m1','m3','m5','m15','h1','h4','D1'] %}
+                            <label class="inline-flex items-center bg-gray-100 px-2 py-1 rounded cursor-pointer hover:bg-gray-200">
+                                <input type="checkbox" name="timeframe" value="{{ tf }}" class="form-checkbox h-4 w-4 text-blue-600">
+                                <span class="ml-2 text-sm">{{ tf }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="font-bold text-sm text-green-700 mb-2">Pro / Conferme</p>
+                        <div class="space-y-1">
+                            {% for pro in user_pros %}
+                            <label class="flex items-center">
+                                <input type="checkbox" name="pros" value="{{ pro }}" class="form-checkbox h-3 w-3 text-green-600">
+                                <span class="ml-2 text-xs text-gray-700">{{ pro }}</span>
+                            </label>
+                            {% else %}
+                            <a href="/settings" class="text-xs text-blue-500 underline">Imposta i tuoi PRO</a>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="font-bold text-sm text-red-700 mb-2">Contro / Difetti</p>
+                        <div class="space-y-1">
+                            {% for con in user_cons %}
+                            <label class="flex items-center">
+                                <input type="checkbox" name="cons" value="{{ con }}" class="form-checkbox h-3 w-3 text-red-600">
+                                <span class="ml-2 text-xs text-gray-700">{{ con }}</span>
+                            </label>
+                            {% else %}
+                            <a href="/settings" class="text-xs text-blue-500 underline">Imposta i tuoi CONTRO</a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <input type="text" name="link1" placeholder="Link Screen 1" class="border p-2 rounded w-full">
+                    <input type="text" name="link2" placeholder="Link Screen 2" class="border p-2 rounded w-full">
+                </div>
+                <textarea name="notes" placeholder="Note operative..." class="border p-2 rounded w-full h-16 mb-4"></textarea>
                 
-                <button type="submit" class="bg-blue-600 text-white font-bold p-2 rounded md:col-span-6 hover:bg-blue-700 transition">Salva nel Journal</button>
+                <button type="submit" class="bg-blue-600 text-white font-bold py-2 w-full rounded hover:bg-blue-700 transition">Salva nel Journal</button>
             </form>
         </div>
 
@@ -92,14 +133,11 @@
                     <tr>
                         {% if admin_view %}<th class="px-4 py-3">User</th>{% endif %}
                         <th class="px-4 py-3">Data</th>
-                        <th class="px-4 py-3">Ora</th>
                         <th class="px-4 py-3">Coppia</th>
                         <th class="px-4 py-3">TF</th>
-                        <th class="px-4 py-3">Dir</th>
                         <th class="px-4 py-3">Esito</th>
-                        <th class="px-4 py-3">R:R</th>
                         <th class="px-4 py-3">Ris %</th>
-                        <th class="px-4 py-3">Screens</th>
+                        <th class="px-4 py-3">Pro/Contro</th>
                         <th class="px-4 py-3 text-right">Azioni</th>
                     </tr>
                 </thead>
@@ -110,47 +148,35 @@
                             <td class="px-4 py-4 font-bold text-gray-900">{{ trade.author.username }}</td>
                         {% endif %}
                         <td class="px-4 py-4">{{ trade.date.strftime('%d-%m') }}</td>
-                        <td class="px-4 py-4">{{ trade.time }}</td>
-                        <td class="px-4 py-4 font-medium text-gray-900">{{ trade.pair }}</td>
-                        
+                        <td class="px-4 py-4 font-medium">{{ trade.pair }}</td>
                         <td class="px-4 py-4">
-                            <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ trade.timeframe or '-' }}</span>
-                        </td>
-
-                        <td class="px-4 py-4 
-                            {% if trade.direction == 'Long' %}text-green-600{% else %}text-red-600{% endif %}">
-                            {{ trade.direction }}
+                            {% if trade.timeframe %}
+                                {% for tf in trade.timeframe.split(',') %}
+                                <span class="bg-gray-100 text-xs px-1 rounded border">{{ tf }}</span>
+                                {% endfor %}
+                            {% endif %}
                         </td>
                         <td class="px-4 py-4">
                             <span class="px-2 py-1 rounded text-xs font-bold text-white
                                 {% if trade.outcome == 'Target' %}bg-green-500
                                 {% elif trade.outcome == 'Stop Loss' %}bg-red-500
-                                {% else %}bg-gray-400{% endif %}">
+                                {% elif trade.outcome == 'Non Fillato' %}bg-gray-400
+                                {% elif trade.outcome == 'Setup' %}bg-purple-400
+                                {% else %}bg-yellow-400 text-black{% endif %}">
                                 {{ trade.outcome }}
                             </span>
                         </td>
-                        <td class="px-4 py-4">{{ trade.rr_final }}</td>
                         <td class="px-4 py-4 font-bold 
-                            {% if trade.result_percent > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                            {% if trade.result_percent > 0 %}text-green-600{% elif trade.result_percent < 0 %}text-red-600{% endif %}">
                             {{ trade.result_percent }}%
                         </td>
-                        
-                        <td class="px-4 py-4 flex gap-2">
-                            {% if trade.screen_pre %}
-                                {% set links = trade.screen_pre.split(',') %}
-                                {% for link in links %}
-                                    <a href="{{ link }}" target="_blank" class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs font-bold hover:bg-blue-200" title="Apri Screen">
-                                        {{ loop.index }}
-                                    </a>
-                                {% endfor %}
-                            {% endif %}
+                        <td class="px-4 py-4 text-xs">
+                            <span class="text-green-600 block truncate w-24" title="{{ trade.selected_pros }}">{{ trade.selected_pros }}</span>
+                            <span class="text-red-600 block truncate w-24" title="{{ trade.selected_cons }}">{{ trade.selected_cons }}</span>
                         </td>
-
-                        <td class="px-4 py-4 text-right">
-                            <div class="flex justify-end gap-2">
-                                <a href="/edit_trade/{{ trade.id }}" class="text-blue-600 hover:text-blue-900 font-medium">Modifica</a>
-                                <a href="/delete_trade/{{ trade.id }}" onclick="return confirm('Eliminare?')" class="text-red-600 hover:text-red-900 font-medium ml-2">X</a>
-                            </div>
+                        <td class="px-4 py-4 flex gap-2 justify-end">
+                            <a href="/edit_trade/{{ trade.id }}" class="text-blue-600 hover:text-blue-900 font-medium">Edit</a>
+                            <a href="/delete_trade/{{ trade.id }}" onclick="return confirm('Eliminare?')" class="text-red-600 hover:text-red-900 font-medium ml-2">X</a>
                         </td>
                     </tr>
                     {% endfor %}

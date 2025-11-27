@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Impostazioni Conferme</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8 h-screen flex justify-center items-center">
+
+    <div class="bg-white p-8 rounded shadow-lg w-full max-w-4xl">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">Le tue Conferme (Soggettive)</h2>
+            <a href="/dashboard" class="text-blue-600 underline">Torna alla Dashboard</a>
+        </div>
+        
+        <p class="mb-6 text-gray-600">Inserisci qui le tue regole. Queste appariranno come caselle da spuntare quando inserisci un trade. (Max 20 caratteri consigliati)</p>
+
+        <form method="POST" action="/settings">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                <div class="bg-green-50 p-4 rounded border border-green-200">
+                    <h3 class="font-bold text-green-800 mb-4 text-center">LISTA PRO (Conferme Long/Entry)</h3>
+                    {% for item in user_pros %}
+                    <div class="mb-2 flex items-center">
+                        <span class="text-gray-400 mr-2">{{ loop.index }}.</span>
+                        <input type="text" name="pros_item" value="{{ item }}" maxlength="25" placeholder="Es. Rottura Struttura" class="border p-2 rounded w-full focus:ring-green-500 focus:border-green-500">
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="bg-red-50 p-4 rounded border border-red-200">
+                    <h3 class="font-bold text-red-800 mb-4 text-center">LISTA CONTRO (Rischi/Difetti)</h3>
+                    {% for item in user_cons %}
+                    <div class="mb-2 flex items-center">
+                        <span class="text-gray-400 mr-2">{{ loop.index }}.</span>
+                        <input type="text" name="cons_item" value="{{ item }}" maxlength="25" placeholder="Es. Contro Trend" class="border p-2 rounded w-full focus:ring-red-500 focus:border-red-500">
+                    </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+
+            <div class="mt-8 text-center">
+                <button type="submit" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded hover:bg-indigo-800 transition shadow-lg">
+                    Salva Impostazioni
+                </button>
+            </div>
+        </form>
+    </div>
+
+</body>
+</html>
