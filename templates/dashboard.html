@@ -40,19 +40,44 @@
             <form action="/add_trade" method="POST">
                 
                 <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+                    
                     <select name="pair" class="border p-2 rounded w-full" required>
                         <option value="" disabled selected>Seleziona Asset</option>
-                        <optgroup label="Majors Forex">
+                        <optgroup label="Forex Majors">
                             <option value="EURUSD">EURUSD</option>
                             <option value="GBPUSD">GBPUSD</option>
                             <option value="USDJPY">USDJPY</option>
                             <option value="USDCAD">USDCAD</option>
+                            <option value="USDCHF">USDCHF</option>
+                            <option value="AUDUSD">AUDUSD</option>
+                            <option value="NZDUSD">NZDUSD</option>
                         </optgroup>
-                        <optgroup label="Commodities & Indices">
+                        <optgroup label="Forex Crosses">
+                            <option value="EURGBP">EURGBP</option>
+                            <option value="EURJPY">EURJPY</option>
+                            <option value="GBPJPY">GBPJPY</option>
+                            <option value="AUDJPY">AUDJPY</option>
+                            <option value="CADJPY">CADJPY</option>
+                            <option value="CHFJPY">CHFJPY</option>
+                        </optgroup>
+                        <optgroup label="Materie Prime">
                             <option value="XAUUSD">XAUUSD (GOLD)</option>
+                            <option value="XAGUSD">XAGUSD (SILVER)</option>
+                            <option value="WTI">WTI (OIL)</option>
+                            <option value="BRENT">BRENT</option>
+                            <option value="NGAS">NATURAL GAS</option>
+                        </optgroup>
+                        <optgroup label="Indici">
                             <option value="US30">US30 (Dow Jones)</option>
                             <option value="NAS100">NAS100 (Nasdaq)</option>
+                            <option value="SPX500">SPX500 (S&P)</option>
+                            <option value="DAX40">DAX40 (Ger)</option>
+                            <option value="UK100">UK100 (FTSE)</option>
+                        </optgroup>
+                        <optgroup label="Crypto">
                             <option value="BTCUSD">BTCUSD</option>
+                            <option value="ETHUSD">ETHUSD</option>
+                            <option value="SOLUSD">SOLUSD</option>
                         </optgroup>
                     </select>
 
@@ -219,9 +244,7 @@
 
         <div class="flex justify-center items-center mt-6 gap-4">
             {% if pagination.has_prev %}
-                <a href="{{ url_for('dashboard', page=pagination.prev_num) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">
-                    ← Precedente
-                </a>
+                <a href="{{ url_for('dashboard', page=pagination.prev_num) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">← Precedente</a>
             {% else %}
                 <span class="bg-gray-100 text-gray-400 font-bold py-2 px-4 rounded cursor-not-allowed">← Precedente</span>
             {% endif %}
@@ -229,9 +252,7 @@
             <span class="text-gray-600 font-semibold">Pagina {{ pagination.page }} di {{ pagination.pages }}</span>
 
             {% if pagination.has_next %}
-                <a href="{{ url_for('dashboard', page=pagination.next_num) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">
-                    Successiva →
-                </a>
+                <a href="{{ url_for('dashboard', page=pagination.next_num) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">Successiva →</a>
             {% else %}
                 <span class="bg-gray-100 text-gray-400 font-bold py-2 px-4 rounded cursor-not-allowed">Successiva →</span>
             {% endif %}
