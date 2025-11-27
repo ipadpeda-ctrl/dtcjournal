@@ -12,7 +12,21 @@
         
         <form method="POST" action="" class="grid grid-cols-2 gap-6">
             
-            <input type="text" name="pair" value="{{ trade.pair }}" class="border p-2 rounded w-full">
+            <select name="pair" class="border p-2 rounded w-full">
+                <option value="{{ trade.pair }}" selected>{{ trade.pair }} (Attuale)</option>
+                <optgroup label="Majors Forex">
+                    <option value="EURUSD">EURUSD</option>
+                    <option value="GBPUSD">GBPUSD</option>
+                    <option value="USDJPY">USDJPY</option>
+                    <option value="USDCAD">USDCAD</option>
+                </optgroup>
+                <optgroup label="Commodities & Indices">
+                    <option value="XAUUSD">XAUUSD</option>
+                    <option value="US30">US30</option>
+                    <option value="NAS100">NAS100</option>
+                </optgroup>
+            </select>
+
             <input type="date" name="date" value="{{ trade.date.strftime('%Y-%m-%d') }}" class="border p-2 rounded w-full">
             <input type="time" name="time" value="{{ trade.time }}" class="border p-2 rounded w-full">
             
