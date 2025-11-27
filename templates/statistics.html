@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Statistiche Avanzate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 p-6">
+
+    <div class="max-w-7xl mx-auto">
+        
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">
+                Statistiche Avanzate
+                {% if admin_view %}<span class="text-red-600 text-sm ml-2">(SUPER ADMIN)</span>{% endif %}
+            </h1>
+            <a href="/dashboard" class="bg-gray-600 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded">
+                ← Torna al Journal
+            </a>
+        </div>
+
+        {% if no_data %}
+            <div class="bg-white p-8 rounded shadow text-center">
+                <h2 class="text-xl text-gray-600">Nessun dato disponibile. Inserisci prima qualche operazione nel Journal!</h2>
+                <a href="/dashboard" class="text-blue-500 underline mt-4 block">Vai alla Dashboard</a>
+            </div>
+        {% else %}
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow border-t-4 border-blue-500">
+                <p class="text-gray-500 text-sm font-bold uppercase">Win Rate</p>
+                <p class="text-3xl font-bold text-gray-800">{{ win_rate }}%</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow border-t-4 border-purple-500">
+                <p class="text-gray-500 text-sm font-bold uppercase">Profit Factor</p>
+                <p class="text-3xl font-bold text-gray-800">{{ profit_factor }}</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow border-t-4 {{ 'border-green-500' if net_result >= 0 else 'border-red-500' }}">
+                <p class="text-gray-500 text-sm font-bold uppercase">Net Profit %</p>
+                <p class="text-3xl font-bold {{ 'text-green-600' if net_result >= 0 else 'text-red-600' }}">{{ net_result }}%</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow border-t-4 border-yellow-500">
+                <p class="text-gray-500 text-sm font-bold uppercase">Expectancy</p>
+                <p class="text-3xl font-bold text-gray-800">{{ expectancy }}</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white p-6 rounded shadow">
+                <h2 class="text-xl font-bold text-gray-700 mb-4">Equity Curve</h2>
+                <div class="relative h-72 w-full">
+                    <canvas id="equityChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded shadow">
+                <h2 class="text-xl font-bold text-gray-700 mb-4">Win Rate per Orario (%)</h2>
+                <div class="relative h-72 w-full">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+                <p class="text-xs text-gray-400 mt-2 text-center">Mostra la % di Win in base all'ora di ingresso</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div class="bg-white rounded shadow overflow-hidden">
+                <div class="bg-gray-200 px-4 py-2 font-bold text-gray-700">Analisi Risultati</div>
+                <table class="w-full text-sm text-left">
+                    <tr class="border-b">
+                        <td class="px-4 py-3">Operazioni Totali</td>
+                        <td class="px-4 py-3 font-bold text-right">{{ total_trades }}</td>
+                    </tr>
+                    <tr class="border-b">
+                        <td class="px-4 py-3">Wins</td>
+                        <td class="px-4 py-3 font-bold text-right text-green-600">{{ num_wins }}</td>
+                    </tr>
+                    <tr class="border-b">
+                        <td class="px-4 py-3">Losses</td>
+                        <td class="px-4 py-3 font-bold text-right text-red-600">{{ num_losses }}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="bg-white rounded shadow overflow-hidden">
+                <div class="bg-gray-200 px-4 py-2 font-bold text-gray-700">Long vs Short</div>
+                <div class="grid grid-cols-2 text-center p-4">
+                    <div class="border-r">
+                        <p class="text-gray-500 font-bold mb-1">LONG</p>
+                        <p class="text-xl font-bold">{{ long_count }} Trades</p>
+                        <p class="text-sm text-gray-500">WR: <span class="text-green-600 font-bold">{{ long_wr }}%</span></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 font-bold mb-1">SHORT</p>
+                        <p class="text-xl font-bold">{{ short_count }} Trades</p>
+                        <p class="text-sm text-gray-500">WR: <span class="text-green-600 font-bold">{{ short_wr }}%</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        {% if not no_data %}
+        // 1. EQUITY CHART
+        const ctxEq = document.getElementById('equityChart').getContext('2d');
+        new Chart(ctxEq, {
+            type: 'line',
+            data: {
+                labels: {{ chart_labels | safe }},
+                datasets: [{
+                    label: 'Conto (%)',
+                    data: {{ chart_data | safe }},
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false } } }
+        });
+
+        // 2. HOURLY CHART (NUOVO)
+        const ctxHr = document.getElementById('hourlyChart').getContext('2d');
+        new Chart(ctxHr, {
+            type: 'bar',
+            data: {
+                labels: {{ hourly_labels | safe }},
+                datasets: [{
+                    label: 'Win Rate %',
+                    data: {{ hourly_data | safe }},
+                    backgroundColor: 'rgba(16, 185, 129, 0.6)', // Verde
+                    borderColor: 'rgb(16, 185, 129)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, max: 100 }
+                }
+            }
+        });
+        {% endif %}
+    </script>
+</body>
+</html>

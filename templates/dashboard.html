@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Journal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+
+    <div class="max-w-7xl mx-auto">
+        
+        <div class="flex justify-between items-center mb-6 bg-white p-4 rounded shadow">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">
+                    Diario di {{ user.username }} 
+                    {% if admin_view %}<span class="text-red-600 text-sm ml-2">(SUPER ADMIN)</span>{% endif %}
+                </h1>
+            </div>
+            <div class="flex gap-4">
+                <a href="/statistics" class="bg-indigo-600 hover:bg-indigo-800 text-white font-bold py-2 px-4 rounded flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    Vedi Statistiche
+                </a>
+                <a href="/logout" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Logout</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="mb-4 p-4 rounded text-white font-bold {{ 'bg-green-500' if category == 'success' else 'bg-red-500' }}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="bg-white p-6 rounded shadow mb-8">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Inserisci Nuova Operazione</h2>
+            <form action="/add_trade" method="POST" class="grid grid-cols-2 md:grid-cols-6 gap-4">
+                <input type="text" name="pair" placeholder="Coppia (es. XAUUSD)" class="border p-2 rounded w-full" required>
+                <input type="date" name="date" class="border p-2 rounded w-full" required>
+                <input type="time" name="time" class="border p-2 rounded w-full" required>
+                
+                <select name="direction" class="border p-2 rounded w-full">
+                    <option value="Long">Long</option>
+                    <option value="Short">Short</option>
+                </select>
+                
+                <select name="timeframe" class="border p-2 rounded w-full">
+                    <option value="" disabled selected>TF Ingresso</option>
+                    <option value="m15">m15</option>
+                    <option value="m5">m5</option>
+                    <option value="m3">m3</option>
+                    <option value="m1">m1</option>
+                </select>
+
+                <select name="emotions" class="border p-2 rounded w-full">
+                    <option value="" disabled selected>Emozione</option>
+                    <option value="ansia">Ansia</option>
+                    <option value="stress">Stress</option>
+                    <option value="paura">Paura</option>
+                    <option value="fretta">Fretta</option>
+                    <option value="tranquillo">Tranquillo</option>
+                    <option value="sicuro">Sicuro</option>
+                    <option value="calmo">Calmo</option>
+                </select>
+
+                <input type="number" step="0.01" name="risk_percent" placeholder="Rischio %" class="border p-2 rounded w-full">
+                <input type="number" step="0.01" name="rr_final" placeholder="RR Finale" class="border p-2 rounded w-full">
+                <select name="outcome" class="border p-2 rounded w-full">
+                    <option value="Target">Target</option>
+                    <option value="Stop Loss">Stop Loss</option>
+                    <option value="Breakeven">Breakeven</option>
+                </select>
+                <input type="number" step="0.01" name="result_percent" placeholder="Risultato %" class="border p-2 rounded w-full bg-yellow-50 font-bold border-yellow-300">
+                
+                <div class="md:col-span-3 grid grid-cols-2 gap-2">
+                    <input type="text" name="link1" placeholder="Link Screen 1 (es. Entry)" class="border p-2 rounded w-full">
+                    <input type="text" name="link2" placeholder="Link Screen 2 (es. Exit)" class="border p-2 rounded w-full">
+                </div>
+
+                <textarea name="notes" placeholder="Note operative..." class="border p-2 rounded w-full md:col-span-6 h-16"></textarea>
+                
+                <button type="submit" class="bg-blue-600 text-white font-bold p-2 rounded md:col-span-6 hover:bg-blue-700 transition">Salva nel Journal</button>
+            </form>
+        </div>
+
+        <div class="overflow-x-auto bg-white rounded shadow">
+            <table class="min-w-full text-sm text-left text-gray-500">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-200">
+                    <tr>
+                        {% if admin_view %}<th class="px-4 py-3">User</th>{% endif %}
+                        <th class="px-4 py-3">Data</th>
+                        <th class="px-4 py-3">Ora</th>
+                        <th class="px-4 py-3">Coppia</th>
+                        <th class="px-4 py-3">TF</th>
+                        <th class="px-4 py-3">Dir</th>
+                        <th class="px-4 py-3">Esito</th>
+                        <th class="px-4 py-3">R:R</th>
+                        <th class="px-4 py-3">Ris %</th>
+                        <th class="px-4 py-3">Screens</th>
+                        <th class="px-4 py-3 text-right">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trade in entries %}
+                    <tr class="bg-white border-b hover:bg-gray-50">
+                        {% if admin_view %}
+                            <td class="px-4 py-4 font-bold text-gray-900">{{ trade.author.username }}</td>
+                        {% endif %}
+                        <td class="px-4 py-4">{{ trade.date.strftime('%d-%m') }}</td>
+                        <td class="px-4 py-4">{{ trade.time }}</td>
+                        <td class="px-4 py-4 font-medium text-gray-900">{{ trade.pair }}</td>
+                        
+                        <td class="px-4 py-4">
+                            <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ trade.timeframe or '-' }}</span>
+                        </td>
+
+                        <td class="px-4 py-4 
+                            {% if trade.direction == 'Long' %}text-green-600{% else %}text-red-600{% endif %}">
+                            {{ trade.direction }}
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="px-2 py-1 rounded text-xs font-bold text-white
+                                {% if trade.outcome == 'Target' %}bg-green-500
+                                {% elif trade.outcome == 'Stop Loss' %}bg-red-500
+                                {% else %}bg-gray-400{% endif %}">
+                                {{ trade.outcome }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4">{{ trade.rr_final }}</td>
+                        <td class="px-4 py-4 font-bold 
+                            {% if trade.result_percent > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                            {{ trade.result_percent }}%
+                        </td>
+                        
+                        <td class="px-4 py-4 flex gap-2">
+                            {% if trade.screen_pre %}
+                                {% set links = trade.screen_pre.split(',') %}
+                                {% for link in links %}
+                                    <a href="{{ link }}" target="_blank" class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs font-bold hover:bg-blue-200" title="Apri Screen">
+                                        {{ loop.index }}
+                                    </a>
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+
+                        <td class="px-4 py-4 text-right">
+                            <div class="flex justify-end gap-2">
+                                <a href="/edit_trade/{{ trade.id }}" class="text-blue-600 hover:text-blue-900 font-medium">Modifica</a>
+                                <a href="/delete_trade/{{ trade.id }}" onclick="return confirm('Eliminare?')" class="text-red-600 hover:text-red-900 font-medium ml-2">X</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
