@@ -14,7 +14,7 @@
 
     <div class="max-w-[98%] mx-auto">
         
-        <div class="bg-white dark:bg-gray-800 p-4 rounded shadow mb-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-colors duration-200">
+        <div class="bg-white dark:bg-gray-800 p-4 rounded shadow mb-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-colors">
             <div class="flex items-center gap-4">
                 <img src="{{ url_for('static', filename='logo.avif') }}" alt="Logo Azienda" class="h-20 object-contain bg-white rounded p-1">
                 <h1 class="text-2xl font-bold text-gray-800 dark:text-white hidden md:block">
@@ -45,11 +45,12 @@
           {% endif %}
         {% endwith %}
 
-        <div class="bg-white dark:bg-gray-800 p-6 rounded shadow mb-8 border-t-4 border-blue-600 transition-colors duration-200">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded shadow mb-8 border-t-4 border-blue-600 transition-colors">
             <h2 class="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-200 border-b dark:border-gray-700 pb-2">Nuova Operazione</h2>
             <form action="/add_trade" method="POST">
                 
                 <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+                    
                     <select name="pair" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white" required>
                         <option value="" disabled selected>Seleziona Asset</option>
                         <optgroup label="Forex Majors" class="dark:bg-gray-700">
@@ -57,12 +58,36 @@
                             <option value="GBPUSD">GBPUSD</option>
                             <option value="USDJPY">USDJPY</option>
                             <option value="USDCAD">USDCAD</option>
+                            <option value="USDCHF">USDCHF</option>
+                            <option value="AUDUSD">AUDUSD</option>
+                            <option value="NZDUSD">NZDUSD</option>
                         </optgroup>
-                        <optgroup label="Commodities & Indices" class="dark:bg-gray-700">
+                        <optgroup label="Forex Crosses" class="dark:bg-gray-700">
+                            <option value="EURGBP">EURGBP</option>
+                            <option value="EURJPY">EURJPY</option>
+                            <option value="GBPJPY">GBPJPY</option>
+                            <option value="AUDJPY">AUDJPY</option>
+                            <option value="CADJPY">CADJPY</option>
+                            <option value="CHFJPY">CHFJPY</option>
+                        </optgroup>
+                        <optgroup label="Materie Prime" class="dark:bg-gray-700">
                             <option value="XAUUSD">XAUUSD (GOLD)</option>
+                            <option value="XAGUSD">XAGUSD (SILVER)</option>
+                            <option value="WTI">WTI (OIL)</option>
+                            <option value="BRENT">BRENT</option>
+                            <option value="NGAS">NATURAL GAS</option>
+                        </optgroup>
+                        <optgroup label="Indici" class="dark:bg-gray-700">
                             <option value="US30">US30 (Dow Jones)</option>
                             <option value="NAS100">NAS100 (Nasdaq)</option>
+                            <option value="SPX500">SPX500 (S&P)</option>
+                            <option value="DAX40">DAX40 (Ger)</option>
+                            <option value="UK100">UK100 (FTSE)</option>
+                        </optgroup>
+                        <optgroup label="Crypto" class="dark:bg-gray-700">
                             <option value="BTCUSD">BTCUSD</option>
+                            <option value="ETHUSD">ETHUSD</option>
+                            <option value="SOLUSD">SOLUSD</option>
                         </optgroup>
                     </select>
 
@@ -145,11 +170,12 @@
                     <input type="text" name="link2" placeholder="Link Screen 2 (URL)" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
                 </div>
                 <textarea name="notes" placeholder="Note operative..." class="border dark:border-gray-600 p-2 rounded w-full h-16 mb-4 bg-white dark:bg-gray-700 dark:text-white"></textarea>
+                
                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 w-full rounded transition">Salva nel Journal</button>
             </form>
         </div>
 
-        <div class="overflow-x-auto bg-white dark:bg-gray-800 rounded shadow transition-colors duration-200">
+        <div class="overflow-x-auto bg-white dark:bg-gray-800 rounded shadow transition-colors">
             <table class="min-w-full text-sm text-left text-gray-500 dark:text-gray-400">
                 <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-200 dark:bg-gray-700">
                     <tr>
@@ -252,7 +278,7 @@
     </div>
 
     <script>
-        // Check local storage or system preference
+        // Check local storage
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
             document.getElementById('moon-icon').classList.add('hidden');
