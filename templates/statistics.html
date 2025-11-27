@@ -5,72 +5,71 @@
     <title>Statistiche Avanzate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
-<body class="bg-gray-100 p-6">
+<body class="bg-gray-100 dark:bg-gray-900 p-6 transition-colors">
 
     <div class="max-w-7xl mx-auto">
         
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white">
                 Statistiche Avanzate
-                {% if admin_view %}<span class="text-red-600 text-sm ml-2">(SUPER ADMIN)</span>{% endif %}
             </h1>
-            <a href="/dashboard" class="bg-gray-600 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded">
+            <a href="/dashboard" class="bg-gray-600 dark:bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded">
                 ← Torna al Journal
             </a>
         </div>
 
         {% if no_data %}
-            <div class="bg-white p-8 rounded shadow text-center">
-                <h2 class="text-xl text-gray-600">Nessun dato disponibile.</h2>
+            <div class="bg-white dark:bg-gray-800 p-8 rounded shadow text-center">
+                <h2 class="text-xl text-gray-600 dark:text-gray-300">Nessun dato disponibile.</h2>
                 <a href="/dashboard" class="text-blue-500 underline mt-4 block">Vai alla Dashboard</a>
             </div>
         {% else %}
 
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            <div class="bg-white p-4 rounded shadow border-t-4 border-blue-500">
-                <p class="text-gray-500 text-xs font-bold uppercase">Win Rate</p>
-                <p class="text-2xl font-bold text-gray-800">{{ win_rate }}%</p>
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 border-blue-500">
+                <p class="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">Win Rate</p>
+                <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ win_rate }}%</p>
             </div>
-            <div class="bg-white p-4 rounded shadow border-t-4 border-purple-500">
-                <p class="text-gray-500 text-xs font-bold uppercase">Profit Factor</p>
-                <p class="text-2xl font-bold text-gray-800">{{ profit_factor }}</p>
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 border-purple-500">
+                <p class="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">Profit Factor</p>
+                <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ profit_factor }}</p>
             </div>
-            <div class="bg-white p-4 rounded shadow border-t-4 {{ 'border-green-500' if net_result >= 0 else 'border-red-500' }}">
-                <p class="text-gray-500 text-xs font-bold uppercase">Net Profit</p>
-                <p class="text-2xl font-bold {{ 'text-green-600' if net_result >= 0 else 'text-red-600' }}">{{ net_result }}%</p>
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 {{ 'border-green-500' if net_result >= 0 else 'border-red-500' }}">
+                <p class="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">Net Profit</p>
+                <p class="text-2xl font-bold {{ 'text-green-600 dark:text-green-400' if net_result >= 0 else 'text-red-600 dark:text-red-400' }}">{{ net_result }}%</p>
             </div>
-            <div class="bg-white p-4 rounded shadow border-t-4 border-gray-400">
-                <p class="text-gray-500 text-xs font-bold uppercase">Non Fillati</p>
-                <p class="text-2xl font-bold text-gray-600">{{ num_non_fill }}</p>
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 border-gray-400 dark:border-gray-600">
+                <p class="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">Non Fillati</p>
+                <p class="text-2xl font-bold text-gray-600 dark:text-gray-300">{{ num_non_fill }}</p>
             </div>
-            <div class="bg-white p-4 rounded shadow border-t-4 border-indigo-400">
-                <p class="text-gray-500 text-xs font-bold uppercase">Setup Monitorati</p>
-                <p class="text-2xl font-bold text-indigo-600">{{ num_setup }}</p>
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 border-indigo-400">
+                <p class="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">Setup Monitorati</p>
+                <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{{ num_setup }}</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div class="bg-white p-6 rounded shadow">
-                <h2 class="text-xl font-bold text-gray-700 mb-4">Equity Curve</h2>
-                <div class="relative h-64 w-full">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded shadow">
+                <h2 class="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Equity Curve</h2>
+                <div class="relative h-64 w-full bg-white rounded p-2">
                     <canvas id="equityChart"></canvas>
                 </div>
             </div>
-            <div class="bg-white p-6 rounded shadow">
-                <h2 class="text-xl font-bold text-gray-700 mb-4">Win Rate per Orario</h2>
-                <div class="relative h-64 w-full">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded shadow">
+                <h2 class="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Win Rate per Orario</h2>
+                <div class="relative h-64 w-full bg-white rounded p-2">
                     <canvas id="hourlyChart"></canvas>
                 </div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            <div class="bg-white rounded shadow overflow-hidden">
-                <div class="bg-gray-800 px-4 py-2 font-bold text-white">Performance per Timeframe</div>
-                <table class="w-full text-sm text-left">
-                    <thead class="bg-gray-100 text-gray-600 uppercase text-xs">
+            <div class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden">
+                <div class="bg-gray-800 dark:bg-gray-950 px-4 py-2 font-bold text-white">Performance per Timeframe</div>
+                <table class="w-full text-sm text-left dark:text-gray-300">
+                    <thead class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 uppercase text-xs">
                         <tr>
                             <th class="px-4 py-2">TF</th>
                             <th class="px-4 py-2 text-right">Trades</th>
@@ -80,11 +79,10 @@
                     </thead>
                     <tbody>
                         {% for row in tf_table_data %}
-                        <tr class="border-b hover:bg-gray-50">
+                        <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                             <td class="px-4 py-2 font-bold">{{ row.name }}</td>
                             <td class="px-4 py-2 text-right">{{ row.total }}</td>
-                            <td class="px-4 py-2 text-right font-bold 
-                                {% if row.win_rate >= 50 %}text-green-600{% else %}text-red-600{% endif %}">
+                            <td class="px-4 py-2 text-right font-bold {% if row.win_rate >= 50 %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
                                 {{ row.win_rate }}%
                             </td>
                             <td class="px-4 py-2 text-right font-bold">{{ row.result }}%</td>
@@ -94,33 +92,32 @@
                 </table>
             </div>
 
-            <div class="bg-white rounded shadow overflow-hidden">
-                <div class="bg-gray-800 px-4 py-2 font-bold text-white">Riepilogo Esiti</div>
-                <table class="w-full text-sm text-left">
-                    <tr class="border-b">
+            <div class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden">
+                <div class="bg-gray-800 dark:bg-gray-950 px-4 py-2 font-bold text-white">Riepilogo Esiti</div>
+                <table class="w-full text-sm text-left dark:text-gray-300">
+                    <tr class="border-b dark:border-gray-700">
                         <td class="px-4 py-3">Totale (Solo Eseguiti)</td>
                         <td class="px-4 py-3 font-bold text-right">{{ total_active }}</td>
                     </tr>
-                    <tr class="border-b">
+                    <tr class="border-b dark:border-gray-700">
                         <td class="px-4 py-3">Wins (Target)</td>
-                        <td class="px-4 py-3 font-bold text-right text-green-600">{{ num_wins }}</td>
+                        <td class="px-4 py-3 font-bold text-right text-green-600 dark:text-green-400">{{ num_wins }}</td>
                     </tr>
-                    <tr class="border-b">
+                    <tr class="border-b dark:border-gray-700">
                         <td class="px-4 py-3">Losses (Stop)</td>
-                        <td class="px-4 py-3 font-bold text-right text-red-600">{{ num_losses }}</td>
-                    </tr>
-                    <tr class="border-b">
-                        <td class="px-4 py-3">Breakeven</td>
-                        <td class="px-4 py-3 font-bold text-right text-gray-600">{{ num_be }}</td>
+                        <td class="px-4 py-3 font-bold text-right text-red-600 dark:text-red-400">{{ num_losses }}</td>
                     </tr>
                 </table>
             </div>
-
         </div>
         {% endif %}
     </div>
 
     <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+
         {% if not no_data %}
         const ctxEq = document.getElementById('equityChart').getContext('2d');
         new Chart(ctxEq, {

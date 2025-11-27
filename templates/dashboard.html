@@ -4,24 +4,34 @@
     <meta charset="UTF-8">
     <title>Dashboard Journal</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
 </head>
-<body class="bg-gray-100 p-4">
+<body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100 p-4 transition-colors duration-200">
 
     <div class="max-w-[98%] mx-auto">
         
-        <div class="bg-white p-4 rounded shadow mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="bg-white dark:bg-gray-800 p-4 rounded shadow mb-6 flex flex-col md:flex-row justify-between items-center gap-4 transition-colors duration-200">
             <div class="flex items-center gap-4">
-                <img src="{{ url_for('static', filename='logo.avif') }}" alt="Logo Azienda" class="h-20 object-contain">
-                <h1 class="text-2xl font-bold text-gray-800 hidden md:block">
+                <img src="{{ url_for('static', filename='logo.avif') }}" alt="Logo Azienda" class="h-20 object-contain bg-white rounded p-1">
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white hidden md:block">
                     Diario di {{ user.username }} 
                     {% if admin_view %}<span class="text-red-600 text-sm ml-2">(SUPER ADMIN)</span>{% endif %}
                 </h1>
             </div>
 
-            <div class="flex gap-3">
-                <a href="/settings" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded flex items-center gap-2">⚙️ Impostazioni</a>
-                <a href="/statistics" class="bg-indigo-600 hover:bg-indigo-800 text-white font-bold py-2 px-4 rounded flex items-center gap-2">📊 Statistiche</a>
-                <a href="/logout" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Esci</a>
+            <div class="flex gap-3 items-center">
+                <button onclick="toggleDarkMode()" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                    <svg id="sun-icon" class="w-6 h-6 text-yellow-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <svg id="moon-icon" class="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                </button>
+
+                <a href="/settings" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-bold py-2 px-4 rounded flex items-center gap-2">⚙️ Impostazioni</a>
+                <a href="/statistics" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2">📊 Statistiche</a>
+                <a href="/logout" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Esci</a>
             </div>
         </div>
 
@@ -35,61 +45,36 @@
           {% endif %}
         {% endwith %}
 
-        <div class="bg-white p-6 rounded shadow mb-8 border-t-4 border-blue-600">
-            <h2 class="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Nuova Operazione</h2>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded shadow mb-8 border-t-4 border-blue-600 transition-colors duration-200">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-200 border-b dark:border-gray-700 pb-2">Nuova Operazione</h2>
             <form action="/add_trade" method="POST">
                 
                 <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
-                    
-                    <select name="pair" class="border p-2 rounded w-full" required>
+                    <select name="pair" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white" required>
                         <option value="" disabled selected>Seleziona Asset</option>
-                        <optgroup label="Forex Majors">
+                        <optgroup label="Forex Majors" class="dark:bg-gray-700">
                             <option value="EURUSD">EURUSD</option>
                             <option value="GBPUSD">GBPUSD</option>
                             <option value="USDJPY">USDJPY</option>
                             <option value="USDCAD">USDCAD</option>
-                            <option value="USDCHF">USDCHF</option>
-                            <option value="AUDUSD">AUDUSD</option>
-                            <option value="NZDUSD">NZDUSD</option>
                         </optgroup>
-                        <optgroup label="Forex Crosses">
-                            <option value="EURGBP">EURGBP</option>
-                            <option value="EURJPY">EURJPY</option>
-                            <option value="GBPJPY">GBPJPY</option>
-                            <option value="AUDJPY">AUDJPY</option>
-                            <option value="CADJPY">CADJPY</option>
-                            <option value="CHFJPY">CHFJPY</option>
-                        </optgroup>
-                        <optgroup label="Materie Prime">
+                        <optgroup label="Commodities & Indices" class="dark:bg-gray-700">
                             <option value="XAUUSD">XAUUSD (GOLD)</option>
-                            <option value="XAGUSD">XAGUSD (SILVER)</option>
-                            <option value="WTI">WTI (OIL)</option>
-                            <option value="BRENT">BRENT</option>
-                            <option value="NGAS">NATURAL GAS</option>
-                        </optgroup>
-                        <optgroup label="Indici">
                             <option value="US30">US30 (Dow Jones)</option>
                             <option value="NAS100">NAS100 (Nasdaq)</option>
-                            <option value="SPX500">SPX500 (S&P)</option>
-                            <option value="DAX40">DAX40 (Ger)</option>
-                            <option value="UK100">UK100 (FTSE)</option>
-                        </optgroup>
-                        <optgroup label="Crypto">
                             <option value="BTCUSD">BTCUSD</option>
-                            <option value="ETHUSD">ETHUSD</option>
-                            <option value="SOLUSD">SOLUSD</option>
                         </optgroup>
                     </select>
 
-                    <input type="date" name="date" class="border p-2 rounded w-full" required>
-                    <input type="time" name="time" class="border p-2 rounded w-full" required>
+                    <input type="date" name="date" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white" required>
+                    <input type="time" name="time" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white" required>
                     
-                    <select name="direction" class="border p-2 rounded w-full">
+                    <select name="direction" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
                         <option value="Long">Long</option>
                         <option value="Short">Short</option>
                     </select>
                     
-                    <select name="outcome" class="border p-2 rounded w-full bg-blue-50">
+                    <select name="outcome" class="border dark:border-gray-600 p-2 rounded w-full bg-blue-50 dark:bg-gray-600 dark:text-white">
                         <option value="Target">Target</option>
                         <option value="Stop Loss">Stop Loss</option>
                         <option value="Breakeven">Breakeven</option>
@@ -97,7 +82,7 @@
                         <option value="Setup">Setup (Monitoraggio)</option>
                     </select>
                     
-                    <select name="emotions" class="border p-2 rounded w-full">
+                    <select name="emotions" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
                         <option value="" disabled selected>Emozione</option>
                         <option value="ansia">Ansia</option>
                         <option value="stress">Stress</option>
@@ -110,38 +95,44 @@
                 </div>
 
                 <div class="grid grid-cols-3 gap-4 mb-4">
-                    <input type="number" step="0.01" name="risk_percent" placeholder="Rischio %" class="border p-2 rounded w-full">
-                    <input type="number" step="0.01" name="rr_final" placeholder="RR Finale" class="border p-2 rounded w-full">
-                    <input type="number" step="0.01" name="result_percent" placeholder="Risultato %" class="border p-2 rounded w-full bg-yellow-50 font-bold border-yellow-300">
+                    <input type="number" step="0.01" name="risk_percent" placeholder="Rischio %" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
+                    <input type="number" step="0.01" name="rr_final" placeholder="RR Finale" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
+                    <input type="number" step="0.01" name="result_percent" placeholder="Risultato %" class="border dark:border-gray-600 p-2 rounded w-full bg-yellow-50 dark:bg-gray-600 dark:text-white font-bold border-yellow-300">
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4 border-t border-b py-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4 border-t dark:border-gray-700 border-b py-4">
                     <div>
-                        <p class="font-bold text-sm text-gray-600 mb-2">Timeframes</p>
+                        <p class="font-bold text-sm text-gray-600 dark:text-gray-300 mb-2">Timeframes</p>
                         <div class="flex flex-wrap gap-2">
                             {% for tf in ['m1','m3','m5','m15','h1','h4','D1'] %}
-                            <label class="inline-flex items-center bg-gray-100 px-2 py-1 rounded cursor-pointer hover:bg-gray-200">
+                            <label class="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                 <input type="checkbox" name="timeframe" value="{{ tf }}" class="form-checkbox h-4 w-4 text-blue-600">
-                                <span class="ml-2 text-sm">{{ tf }}</span>
+                                <span class="ml-2 text-sm dark:text-gray-200">{{ tf }}</span>
                             </label>
                             {% endfor %}
                         </div>
                     </div>
                     <div>
-                        <p class="font-bold text-sm text-green-700 mb-2">Pro</p>
+                        <p class="font-bold text-sm text-green-700 dark:text-green-400 mb-2">Pro</p>
                         <div class="space-y-1">
                             {% for pro in user_pros %}
-                            <label class="flex items-center"><input type="checkbox" name="pros" value="{{ pro }}" class="form-checkbox text-green-600"><span class="ml-2 text-xs text-gray-700">{{ pro }}</span></label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="pros" value="{{ pro }}" class="form-checkbox text-green-600">
+                                <span class="ml-2 text-xs text-gray-700 dark:text-gray-300">{{ pro }}</span>
+                            </label>
                             {% else %}
                             <a href="/settings" class="text-xs text-blue-500 underline">Imposta i tuoi PRO</a>
                             {% endfor %}
                         </div>
                     </div>
                     <div>
-                        <p class="font-bold text-sm text-red-700 mb-2">Contro</p>
+                        <p class="font-bold text-sm text-red-700 dark:text-red-400 mb-2">Contro</p>
                         <div class="space-y-1">
                             {% for con in user_cons %}
-                            <label class="flex items-center"><input type="checkbox" name="cons" value="{{ con }}" class="form-checkbox text-red-600"><span class="ml-2 text-xs text-gray-700">{{ con }}</span></label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="cons" value="{{ con }}" class="form-checkbox text-red-600">
+                                <span class="ml-2 text-xs text-gray-700 dark:text-gray-300">{{ con }}</span>
+                            </label>
                             {% else %}
                             <a href="/settings" class="text-xs text-blue-500 underline">Imposta i tuoi CONTRO</a>
                             {% endfor %}
@@ -150,17 +141,17 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 mb-4">
-                    <input type="text" name="link1" placeholder="Link Screen 1 (URL)" class="border p-2 rounded w-full">
-                    <input type="text" name="link2" placeholder="Link Screen 2 (URL)" class="border p-2 rounded w-full">
+                    <input type="text" name="link1" placeholder="Link Screen 1 (URL)" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
+                    <input type="text" name="link2" placeholder="Link Screen 2 (URL)" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
                 </div>
-                <textarea name="notes" placeholder="Note operative..." class="border p-2 rounded w-full h-16 mb-4"></textarea>
-                <button type="submit" class="bg-blue-600 text-white font-bold py-2 w-full rounded hover:bg-blue-700 transition">Salva nel Journal</button>
+                <textarea name="notes" placeholder="Note operative..." class="border dark:border-gray-600 p-2 rounded w-full h-16 mb-4 bg-white dark:bg-gray-700 dark:text-white"></textarea>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 w-full rounded transition">Salva nel Journal</button>
             </form>
         </div>
 
-        <div class="overflow-x-auto bg-white rounded shadow">
-            <table class="min-w-full text-sm text-left text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-200">
+        <div class="overflow-x-auto bg-white dark:bg-gray-800 rounded shadow transition-colors duration-200">
+            <table class="min-w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-200 dark:bg-gray-700">
                     <tr>
                         {% if admin_view %}<th class="px-4 py-3">User</th>{% endif %}
                         <th class="px-4 py-3">Data</th>
@@ -175,19 +166,19 @@
                 </thead>
                 <tbody>
                     {% for trade in pagination.items %}
-                    <tr class="bg-white border-b hover:bg-gray-50">
+                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                         {% if admin_view %}
-                            <td class="px-4 py-4 font-bold text-gray-900">{{ trade.author.username }}</td>
+                            <td class="px-4 py-4 font-bold text-gray-900 dark:text-white">{{ trade.author.username }}</td>
                         {% endif %}
                         <td class="px-4 py-4 whitespace-nowrap">
-                            <div class="font-bold">{{ trade.date.strftime('%d-%m') }}</div>
+                            <div class="font-bold dark:text-gray-200">{{ trade.date.strftime('%d-%m') }}</div>
                             <div class="text-xs text-gray-400">{{ trade.time }}</div>
                         </td>
-                        <td class="px-4 py-4 font-medium text-gray-900">{{ trade.pair }}</td>
+                        <td class="px-4 py-4 font-medium text-gray-900 dark:text-white">{{ trade.pair }}</td>
                         <td class="px-4 py-4">
                             {% if trade.timeframe %}
                                 {% for tf in trade.timeframe.split(',') %}
-                                <span class="inline-block bg-gray-100 text-xs px-1 rounded border mb-1">{{ tf }}</span>
+                                <span class="inline-block bg-gray-100 dark:bg-gray-700 dark:text-gray-300 text-xs px-1 rounded border dark:border-gray-600 mb-1">{{ tf }}</span>
                                 {% endfor %}
                             {% endif %}
                         </td>
@@ -200,18 +191,18 @@
                                 {% else %}bg-yellow-400 text-black{% endif %}">
                                 {{ trade.outcome }}
                             </span>
-                            <div class="text-xs mt-1 text-gray-500 font-bold">{{ trade.direction }}</div>
+                            <div class="text-xs mt-1 text-gray-500 dark:text-gray-400 font-bold">{{ trade.direction }}</div>
                         </td>
                         <td class="px-4 py-4 font-bold 
-                            {% if trade.result_percent > 0 %}text-green-600{% elif trade.result_percent < 0 %}text-red-600{% endif %}">
+                            {% if trade.result_percent > 0 %}text-green-600 dark:text-green-400{% elif trade.result_percent < 0 %}text-red-600 dark:text-red-400{% endif %}">
                             {{ trade.result_percent }}%
                         </td>
                         <td class="px-4 py-4 text-xs">
                             {% if trade.selected_pros %}
-                                <div class="text-green-600 truncate max-w-[150px]" title="{{ trade.selected_pros }}">✅ {{ trade.selected_pros }}</div>
+                                <div class="text-green-600 dark:text-green-400 truncate max-w-[150px]" title="{{ trade.selected_pros }}">✅ {{ trade.selected_pros }}</div>
                             {% endif %}
                             {% if trade.selected_cons %}
-                                <div class="text-red-600 truncate max-w-[150px]" title="{{ trade.selected_cons }}">⚠️ {{ trade.selected_cons }}</div>
+                                <div class="text-red-600 dark:text-red-400 truncate max-w-[150px]" title="{{ trade.selected_cons }}">⚠️ {{ trade.selected_cons }}</div>
                             {% endif %}
                         </td>
                         <td class="px-4 py-4 text-center">
@@ -220,20 +211,20 @@
                                     {% set links = trade.screen_pre.split(',') %}
                                     {% for link in links %}
                                         {% if link %}
-                                        <a href="{{ link }}" target="_blank" class="flex items-center justify-center w-6 h-6 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-600 hover:text-white transition">
+                                        <a href="{{ link }}" target="_blank" class="flex items-center justify-center w-6 h-6 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full hover:bg-blue-600 hover:text-white transition">
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                                         </a>
                                         {% endif %}
                                     {% endfor %}
                                 {% else %}
-                                    <span class="text-gray-300">-</span>
+                                    <span class="text-gray-300 dark:text-gray-600">-</span>
                                 {% endif %}
                             </div>
                         </td>
                         <td class="px-4 py-4 text-right">
                             <div class="flex justify-end gap-2">
-                                <a href="/edit_trade/{{ trade.id }}" class="text-blue-600 hover:text-blue-900">Edit</a>
-                                <a href="/delete_trade/{{ trade.id }}" onclick="return confirm('Eliminare?')" class="text-red-600 hover:text-red-900 ml-2">X</a>
+                                <a href="/edit_trade/{{ trade.id }}" class="text-blue-600 dark:text-blue-400 hover:text-blue-900">Edit</a>
+                                <a href="/delete_trade/{{ trade.id }}" onclick="return confirm('Eliminare?')" class="text-red-600 dark:text-red-400 hover:text-red-900 ml-2">X</a>
                             </div>
                         </td>
                     </tr>
@@ -244,20 +235,47 @@
 
         <div class="flex justify-center items-center mt-6 gap-4">
             {% if pagination.has_prev %}
-                <a href="{{ url_for('dashboard', page=pagination.prev_num) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">← Precedente</a>
+                <a href="{{ url_for('dashboard', page=pagination.prev_num) }}" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-bold py-2 px-4 rounded">← Precedente</a>
             {% else %}
-                <span class="bg-gray-100 text-gray-400 font-bold py-2 px-4 rounded cursor-not-allowed">← Precedente</span>
+                <span class="bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 font-bold py-2 px-4 rounded cursor-not-allowed">← Precedente</span>
             {% endif %}
 
-            <span class="text-gray-600 font-semibold">Pagina {{ pagination.page }} di {{ pagination.pages }}</span>
+            <span class="text-gray-600 dark:text-gray-300 font-semibold">Pagina {{ pagination.page }} di {{ pagination.pages }}</span>
 
             {% if pagination.has_next %}
-                <a href="{{ url_for('dashboard', page=pagination.next_num) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">Successiva →</a>
+                <a href="{{ url_for('dashboard', page=pagination.next_num) }}" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white font-bold py-2 px-4 rounded">Successiva →</a>
             {% else %}
-                <span class="bg-gray-100 text-gray-400 font-bold py-2 px-4 rounded cursor-not-allowed">Successiva →</span>
+                <span class="bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 font-bold py-2 px-4 rounded cursor-not-allowed">Successiva →</span>
             {% endif %}
         </div>
 
     </div>
+
+    <script>
+        // Check local storage or system preference
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            document.getElementById('moon-icon').classList.add('hidden');
+            document.getElementById('sun-icon').classList.remove('hidden');
+        } else {
+            document.documentElement.classList.remove('dark');
+            document.getElementById('moon-icon').classList.remove('hidden');
+            document.getElementById('sun-icon').classList.add('hidden');
+        }
+
+        function toggleDarkMode() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+                document.getElementById('moon-icon').classList.remove('hidden');
+                document.getElementById('sun-icon').classList.add('hidden');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+                document.getElementById('moon-icon').classList.add('hidden');
+                document.getElementById('sun-icon').classList.remove('hidden');
+            }
+        }
+    </script>
 </body>
 </html>

@@ -4,79 +4,46 @@
     <meta charset="UTF-8">
     <title>Modifica Trade</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
-<body class="bg-gray-100 p-8 h-screen flex justify-center items-center">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-8 h-screen flex justify-center items-center transition-colors">
 
-    <div class="bg-white p-8 rounded shadow-lg w-full max-w-3xl overflow-y-auto max-h-screen">
-        <h2 class="text-2xl font-bold mb-6 text-gray-800">Modifica Operazione</h2>
+    <div class="bg-white dark:bg-gray-800 p-8 rounded shadow-lg w-full max-w-3xl overflow-y-auto max-h-screen">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Modifica Operazione</h2>
         
         <form method="POST" action="" class="grid grid-cols-2 gap-6">
             
             <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Coppia</label>
-                <select name="pair" class="border p-2 rounded w-full bg-gray-50 border-blue-500">
-                    <option value="{{ trade.pair }}" selected class="bg-gray-300 font-bold">{{ trade.pair }} (Attuale)</option>
-                    
-                    <optgroup label="Forex Majors">
-                        <option value="EURUSD">EURUSD</option>
-                        <option value="GBPUSD">GBPUSD</option>
-                        <option value="USDJPY">USDJPY</option>
-                        <option value="USDCAD">USDCAD</option>
-                        <option value="USDCHF">USDCHF</option>
-                        <option value="AUDUSD">AUDUSD</option>
-                        <option value="NZDUSD">NZDUSD</option>
-                    </optgroup>
-                    <optgroup label="Forex Crosses">
-                        <option value="EURGBP">EURGBP</option>
-                        <option value="EURJPY">EURJPY</option>
-                        <option value="GBPJPY">GBPJPY</option>
-                        <option value="AUDJPY">AUDJPY</option>
-                        <option value="CADJPY">CADJPY</option>
-                        <option value="CHFJPY">CHFJPY</option>
-                    </optgroup>
-                    <optgroup label="Materie Prime">
-                        <option value="XAUUSD">XAUUSD (GOLD)</option>
-                        <option value="XAGUSD">XAGUSD (SILVER)</option>
-                        <option value="WTI">WTI (OIL)</option>
-                        <option value="BRENT">BRENT</option>
-                        <option value="NGAS">NATURAL GAS</option>
-                    </optgroup>
-                    <optgroup label="Indici">
-                        <option value="US30">US30 (Dow Jones)</option>
-                        <option value="NAS100">NAS100 (Nasdaq)</option>
-                        <option value="SPX500">SPX500 (S&P)</option>
-                        <option value="DAX40">DAX40 (Ger)</option>
-                        <option value="UK100">UK100 (FTSE)</option>
-                    </optgroup>
-                    <optgroup label="Crypto">
-                        <option value="BTCUSD">BTCUSD</option>
-                        <option value="ETHUSD">ETHUSD</option>
-                        <option value="SOLUSD">SOLUSD</option>
-                    </optgroup>
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Coppia</label>
+                <select name="pair" class="border dark:border-gray-600 p-2 rounded w-full bg-gray-50 dark:bg-gray-700 dark:text-white border-blue-500">
+                    <option value="{{ trade.pair }}" selected class="bg-gray-300 dark:bg-gray-600 font-bold">{{ trade.pair }} (Attuale)</option>
+                    <optgroup label="Forex Majors" class="dark:bg-gray-700"><option value="EURUSD">EURUSD</option><option value="GBPUSD">GBPUSD</option></optgroup>
+                    <optgroup label="Materie Prime" class="dark:bg-gray-700"><option value="XAUUSD">XAUUSD</option></optgroup>
+                    <option value="US30">US30</option><option value="BTCUSD">BTCUSD</option>
                 </select>
             </div>
 
             <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Data</label>
-                <input type="date" name="date" value="{{ trade.date.strftime('%Y-%m-%d') }}" class="border p-2 rounded w-full">
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Data</label>
+                <input type="date" name="date" value="{{ trade.date.strftime('%Y-%m-%d') }}" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
             </div>
 
             <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Orario</label>
-                <input type="time" name="time" value="{{ trade.time }}" class="border p-2 rounded w-full">
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Orario</label>
+                <input type="time" name="time" value="{{ trade.time }}" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
             </div>
             
             <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Direzione</label>
-                <select name="direction" class="border p-2 rounded w-full">
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Direzione</label>
+                <select name="direction" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
                     <option value="Long" {% if trade.direction == 'Long' %}selected{% endif %}>Long</option>
                     <option value="Short" {% if trade.direction == 'Short' %}selected{% endif %}>Short</option>
                 </select>
             </div>
             
             <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Esito</label>
-                <select name="outcome" class="border p-2 rounded w-full">
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Esito</label>
+                <select name="outcome" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
                     <option value="Target" {% if trade.outcome == 'Target' %}selected{% endif %}>Target</option>
                     <option value="Stop Loss" {% if trade.outcome == 'Stop Loss' %}selected{% endif %}>Stop Loss</option>
                     <option value="Breakeven" {% if trade.outcome == 'Breakeven' %}selected{% endif %}>Breakeven</option>
@@ -86,83 +53,84 @@
             </div>
             
             <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Emozioni</label>
-                <select name="emotions" class="border p-2 rounded w-full">
-                    <option value="{{ trade.emotions }}" selected>{{ trade.emotions }} (Attuale)</option>
-                    <option value="ansia">Ansia</option>
-                    <option value="stress">Stress</option>
-                    <option value="paura">Paura</option>
-                    <option value="fretta">Fretta</option>
-                    <option value="tranquillo">Tranquillo</option>
-                    <option value="sicuro">Sicuro</option>
-                    <option value="calmo">Calmo</option>
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Emozioni</label>
+                <select name="emotions" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
+                    <option value="{{ trade.emotions }}" selected>{{ trade.emotions }}</option>
+                    <option value="ansia">Ansia</option><option value="stress">Stress</option><option value="tranquillo">Tranquillo</option>
                 </select>
             </div>
 
             <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Rischio %</label>
-                <input type="number" step="0.01" name="risk_percent" value="{{ trade.risk_percent }}" class="border p-2 rounded w-full" placeholder="Rischio %">
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Rischio %</label>
+                <input type="number" step="0.01" name="risk_percent" value="{{ trade.risk_percent }}" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
             </div>
             <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">Risultato %</label>
-                <input type="number" step="0.01" name="result_percent" value="{{ trade.result_percent }}" class="border p-2 rounded w-full font-bold" placeholder="Risultato %">
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Risultato %</label>
+                <input type="number" step="0.01" name="result_percent" value="{{ trade.result_percent }}" class="border dark:border-gray-600 p-2 rounded w-full font-bold bg-white dark:bg-gray-700 dark:text-white">
             </div>
             <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">RR Finale</label>
-                <input type="number" step="0.01" name="rr_final" value="{{ trade.rr_final }}" class="border p-2 rounded w-full" placeholder="RR Finale">
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">RR Finale</label>
+                <input type="number" step="0.01" name="rr_final" value="{{ trade.rr_final }}" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
             </div>
             
-            <div class="col-span-2 border-t pt-4">
-                <p class="font-bold text-sm text-gray-600 mb-2">Timeframes</p>
+            <div class="col-span-2 border-t dark:border-gray-700 pt-4">
+                <p class="font-bold text-sm text-gray-600 dark:text-gray-300 mb-2">Timeframes</p>
                 <div class="flex flex-wrap gap-2">
                     {% for tf in ['m1','m3','m5','m15','h1','h4','D1'] %}
-                    <label class="inline-flex items-center bg-gray-100 px-2 py-1 rounded cursor-pointer">
+                    <label class="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded cursor-pointer">
                         <input type="checkbox" name="timeframe" value="{{ tf }}" class="form-checkbox text-blue-600"
                         {% if tf in curr_tfs %}checked{% endif %}>
-                        <span class="ml-2 text-sm">{{ tf }}</span>
+                        <span class="ml-2 text-sm dark:text-gray-200">{{ tf }}</span>
                     </label>
                     {% endfor %}
                 </div>
             </div>
 
-            <div class="col-span-1 border rounded p-2 bg-green-50">
-                <p class="font-bold text-sm text-green-700 mb-2">Pro (Selezionati)</p>
+            <div class="col-span-1 border dark:border-gray-700 rounded p-2 bg-green-50 dark:bg-gray-900">
+                <p class="font-bold text-sm text-green-700 dark:text-green-400 mb-2">Pro</p>
                 {% for pro in user_pros_list %}
                 <label class="flex items-center mb-1">
                     <input type="checkbox" name="pros" value="{{ pro }}" class="form-checkbox text-green-600"
                     {% if pro in curr_pros %}checked{% endif %}>
-                    <span class="ml-2 text-xs">{{ pro }}</span>
+                    <span class="ml-2 text-xs dark:text-gray-300">{{ pro }}</span>
                 </label>
                 {% endfor %}
             </div>
 
-            <div class="col-span-1 border rounded p-2 bg-red-50">
-                <p class="font-bold text-sm text-red-700 mb-2">Contro (Selezionati)</p>
+            <div class="col-span-1 border dark:border-gray-700 rounded p-2 bg-red-50 dark:bg-gray-900">
+                <p class="font-bold text-sm text-red-700 dark:text-red-400 mb-2">Contro</p>
                 {% for con in user_cons_list %}
                 <label class="flex items-center mb-1">
                     <input type="checkbox" name="cons" value="{{ con }}" class="form-checkbox text-red-600"
                     {% if con in curr_cons %}checked{% endif %}>
-                    <span class="ml-2 text-xs">{{ con }}</span>
+                    <span class="ml-2 text-xs dark:text-gray-300">{{ con }}</span>
                 </label>
                 {% endfor %}
             </div>
 
             <div class="col-span-1">
-                <label class="block text-gray-700 text-sm font-bold mb-2">Link Screen 1</label>
-                <input type="text" name="link1" value="{{ val_link1 }}" class="border p-2 rounded w-full" placeholder="Link 1">
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Link Screen 1</label>
+                <input type="text" name="link1" value="{{ val_link1 }}" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
             </div>
             <div class="col-span-1">
-                <label class="block text-gray-700 text-sm font-bold mb-2">Link Screen 2</label>
-                <input type="text" name="link2" value="{{ val_link2 }}" class="border p-2 rounded w-full" placeholder="Link 2">
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Link Screen 2</label>
+                <input type="text" name="link2" value="{{ val_link2 }}" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
             </div>
 
-            <textarea name="notes" class="border p-2 rounded w-full h-24 col-span-2">{{ trade.notes }}</textarea>
+            <textarea name="notes" class="border dark:border-gray-600 p-2 rounded w-full h-24 col-span-2 bg-white dark:bg-gray-700 dark:text-white">{{ trade.notes }}</textarea>
 
             <div class="col-span-2 flex justify-between mt-4">
-                <a href="/dashboard" class="bg-gray-500 text-white font-bold py-2 px-4 rounded hover:bg-gray-700">Annulla</a>
-                <button type="submit" class="bg-green-600 text-white font-bold py-2 px-4 rounded hover:bg-green-800">Salva Modifiche</button>
+                <a href="/dashboard" class="bg-gray-500 dark:bg-gray-700 text-white font-bold py-2 px-4 rounded">Annulla</a>
+                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Salva Modifiche</button>
             </div>
         </form>
     </div>
+    
+    <script>
+        // Applica dark mode se presente
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
 </body>
 </html>
