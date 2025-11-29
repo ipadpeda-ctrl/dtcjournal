@@ -23,7 +23,7 @@ def add_header(response):
 
 # --- CONFIG ---
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'chiave-segreta-sviluppo-locale')
-ADMIN_USER = "Matteo" 
+ADMIN_USER = "matte" 
 
 database_url = os.environ.get('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
@@ -316,4 +316,5 @@ def edit_trade(id):
 with app.app_context(): db.create_all()
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
+
     app.run(host="0.0.0.0", port=port)
