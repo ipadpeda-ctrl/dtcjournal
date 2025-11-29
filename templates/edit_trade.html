@@ -15,11 +15,23 @@
             
             <div>
                 <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Coppia</label>
-                <select name="pair" class="border dark:border-gray-600 p-2 rounded w-full bg-gray-50 dark:bg-gray-700 dark:text-white border-blue-500">
+                <select name="pair" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white border-blue-500">
                     <option value="{{ trade.pair }}" selected class="bg-gray-300 dark:bg-gray-600 font-bold">{{ trade.pair }} (Attuale)</option>
-                    <optgroup label="Forex Majors" class="dark:bg-gray-700"><option value="EURUSD">EURUSD</option><option value="GBPUSD">GBPUSD</option></optgroup>
-                    <optgroup label="Materie Prime" class="dark:bg-gray-700"><option value="XAUUSD">XAUUSD</option></optgroup>
-                    <option value="US30">US30</option><option value="BTCUSD">BTCUSD</option>
+                    <optgroup label="Forex Majors" class="dark:bg-gray-700">
+                        <option value="EURUSD">EURUSD</option><option value="GBPUSD">GBPUSD</option><option value="USDJPY">USDJPY</option><option value="USDCAD">USDCAD</option><option value="USDCHF">USDCHF</option><option value="AUDUSD">AUDUSD</option><option value="NZDUSD">NZDUSD</option>
+                    </optgroup>
+                    <optgroup label="Forex Crosses" class="dark:bg-gray-700">
+                        <option value="EURGBP">EURGBP</option><option value="EURJPY">EURJPY</option><option value="GBPJPY">GBPJPY</option><option value="AUDJPY">AUDJPY</option><option value="CADJPY">CADJPY</option><option value="CHFJPY">CHFJPY</option>
+                    </optgroup>
+                    <optgroup label="Materie Prime" class="dark:bg-gray-700">
+                        <option value="XAUUSD">XAUUSD (GOLD)</option><option value="XAGUSD">XAGUSD (SILVER)</option><option value="WTI">WTI (OIL)</option><option value="BRENT">BRENT</option><option value="NGAS">NATURAL GAS</option>
+                    </optgroup>
+                    <optgroup label="Indici" class="dark:bg-gray-700">
+                        <option value="US30">US30</option><option value="NAS100">NAS100</option><option value="SPX500">SPX500</option><option value="DAX40">DAX40</option><option value="UK100">UK100</option>
+                    </optgroup>
+                    <optgroup label="Crypto" class="dark:bg-gray-700">
+                        <option value="BTCUSD">BTCUSD</option><option value="ETHUSD">ETHUSD</option><option value="SOLUSD">SOLUSD</option>
+                    </optgroup>
                 </select>
             </div>
 
@@ -55,8 +67,8 @@
             <div>
                 <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Emozioni</label>
                 <select name="emotions" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
-                    <option value="{{ trade.emotions }}" selected>{{ trade.emotions }}</option>
-                    <option value="ansia">Ansia</option><option value="stress">Stress</option><option value="tranquillo">Tranquillo</option>
+                    <option value="{{ trade.emotions }}" selected>{{ trade.emotions }} (Attuale)</option>
+                    <option value="ansia">Ansia</option><option value="stress">Stress</option><option value="paura">Paura</option><option value="fretta">Fretta</option><option value="tranquillo">Tranquillo</option><option value="sicuro">Sicuro</option><option value="calmo">Calmo</option>
                 </select>
             </div>
 
@@ -78,8 +90,7 @@
                 <div class="flex flex-wrap gap-2">
                     {% for tf in ['m1','m3','m5','m15','h1','h4','D1'] %}
                     <label class="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded cursor-pointer">
-                        <input type="checkbox" name="timeframe" value="{{ tf }}" class="form-checkbox text-blue-600"
-                        {% if tf in curr_tfs %}checked{% endif %}>
+                        <input type="checkbox" name="timeframe" value="{{ tf }}" class="form-checkbox text-blue-600" {% if tf in curr_tfs %}checked{% endif %}>
                         <span class="ml-2 text-sm dark:text-gray-200">{{ tf }}</span>
                     </label>
                     {% endfor %}
@@ -90,8 +101,7 @@
                 <p class="font-bold text-sm text-green-700 dark:text-green-400 mb-2">Pro</p>
                 {% for pro in user_pros_list %}
                 <label class="flex items-center mb-1">
-                    <input type="checkbox" name="pros" value="{{ pro }}" class="form-checkbox text-green-600"
-                    {% if pro in curr_pros %}checked{% endif %}>
+                    <input type="checkbox" name="pros" value="{{ pro }}" class="form-checkbox text-green-600" {% if pro in curr_pros %}checked{% endif %}>
                     <span class="ml-2 text-xs dark:text-gray-300">{{ pro }}</span>
                 </label>
                 {% endfor %}
@@ -101,19 +111,18 @@
                 <p class="font-bold text-sm text-red-700 dark:text-red-400 mb-2">Contro</p>
                 {% for con in user_cons_list %}
                 <label class="flex items-center mb-1">
-                    <input type="checkbox" name="cons" value="{{ con }}" class="form-checkbox text-red-600"
-                    {% if con in curr_cons %}checked{% endif %}>
+                    <input type="checkbox" name="cons" value="{{ con }}" class="form-checkbox text-red-600" {% if con in curr_cons %}checked{% endif %}>
                     <span class="ml-2 text-xs dark:text-gray-300">{{ con }}</span>
                 </label>
                 {% endfor %}
             </div>
 
             <div class="col-span-1">
-                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Link Screen 1</label>
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Link 1</label>
                 <input type="text" name="link1" value="{{ val_link1 }}" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
             </div>
             <div class="col-span-1">
-                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Link Screen 2</label>
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Link 2</label>
                 <input type="text" name="link2" value="{{ val_link2 }}" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white">
             </div>
 
@@ -121,16 +130,9 @@
 
             <div class="col-span-2 flex justify-between mt-4">
                 <a href="/dashboard" class="bg-gray-500 dark:bg-gray-700 text-white font-bold py-2 px-4 rounded">Annulla</a>
-                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Salva Modifiche</button>
+                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Salva</button>
             </div>
         </form>
     </div>
-    
-    <script>
-        // Applica dark mode se presente
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        }
-    </script>
 </body>
 </html>

@@ -7,17 +7,19 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 p-6 transition-colors">
+<body class="bg-gray-100 dark:bg-gray-900 p-6 transition-colors duration-200">
 
     <div class="max-w-7xl mx-auto">
         
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Statistiche Avanzate</h1>
-            <a href="/dashboard" class="bg-gray-600 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded">← Torna al Journal</a>
+            <a href="/dashboard" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">← Torna al Journal</a>
         </div>
 
         {% if no_data %}
-            <div class="bg-white dark:bg-gray-800 p-8 rounded shadow text-center dark:text-white">Nessun dato. Inizia a tradare!</div>
+            <div class="bg-white dark:bg-gray-800 p-8 rounded shadow text-center">
+                <h2 class="text-xl text-gray-600 dark:text-gray-300">Nessun dato. Inizia a tradare!</h2>
+            </div>
         {% else %}
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -31,11 +33,11 @@
             </div>
             <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-l-4 {{ 'border-green-500' if net_result >= 0 else 'border-red-500' }}">
                 <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Net Profit</p>
-                <p class="text-2xl font-bold {{ 'text-green-600' if net_result >= 0 else 'text-red-600' }}">{{ net_result }}%</p>
+                <p class="text-2xl font-bold {{ 'text-green-600 dark:text-green-400' if net_result >= 0 else 'text-red-600 dark:text-red-400' }}">{{ net_result }}%</p>
             </div>
-            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-l-4 border-indigo-500">
-                <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Expectancy</p>
-                <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ expectancy }}</p>
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-l-4 border-gray-400">
+                <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Setup / Non Fill</p>
+                <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ num_setup }} / {{ num_non_fill }}</p>
             </div>
         </div>
 
@@ -45,50 +47,63 @@
                 <div class="h-64 bg-white rounded p-2"><canvas id="equityChart"></canvas></div>
             </div>
             <div class="bg-white dark:bg-gray-800 p-4 rounded shadow">
-                <h3 class="font-bold text-gray-700 dark:text-gray-200 mb-2">Win Rate per Giorno Settimana</h3>
-                <div class="h-64 bg-white rounded p-2"><canvas id="dayChart"></canvas></div>
+                <h3 class="font-bold text-gray-700 dark:text-gray-200 mb-2">Distribuzione Oraria (Esiti)</h3>
+                <div class="h-64 bg-white rounded p-2"><canvas id="hourlyChart"></canvas></div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            <div class="col-span-2 bg-white dark:bg-gray-800 rounded shadow overflow-hidden">
-                <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-bold text-gray-700 dark:text-white">Performance per Asset</div>
+            <div class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden">
+                <div class="bg-gray-800 dark:bg-gray-950 px-4 py-2 font-bold text-white">Analisi Confluenze (Pro/Contro)</div>
+                <div class="overflow-x-auto max-h-96">
+                    <table class="w-full text-sm text-left dark:text-gray-300">
+                        <thead class="bg-gray-100 dark:bg-gray-700 uppercase text-xs text-gray-600 dark:text-gray-300 sticky top-0">
+                            <tr>
+                                <th class="px-4 py-2">Confluenza</th>
+                                <th class="px-4 py-2 text-center">Tot</th>
+                                <th class="px-4 py-2 text-center text-green-600">Win</th>
+                                <th class="px-4 py-2 text-center text-red-600">Loss</th>
+                                <th class="px-4 py-2 text-right">WR %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in confluence_table %}
+                            <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td class="px-4 py-2 font-medium">{{ row.name }}</td>
+                                <td class="px-4 py-2 text-center">{{ row.total }}</td>
+                                <td class="px-4 py-2 text-center text-green-600 font-bold">{{ row.wins }}</td>
+                                <td class="px-4 py-2 text-center text-red-600 font-bold">{{ row.loss }}</td>
+                                <td class="px-4 py-2 text-right font-bold {% if row.win_rate >= 50 %}text-green-600{% else %}text-red-600{% endif %}">{{ row.win_rate }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden">
+                <div class="bg-gray-800 dark:bg-gray-950 px-4 py-2 font-bold text-white">Performance Timeframe</div>
                 <table class="w-full text-sm text-left dark:text-gray-300">
-                    <thead class="bg-gray-100 dark:bg-gray-600 uppercase text-xs"><tr><th class="px-4 py-2">Coppia</th><th class="px-4 py-2">Trades</th><th class="px-4 py-2">Win Rate</th><th class="px-4 py-2 text-right">Profitto</th></tr></thead>
+                    <thead class="bg-gray-100 dark:bg-gray-700 uppercase text-xs text-gray-600 dark:text-gray-300">
+                        <tr>
+                            <th class="px-4 py-2">TF</th>
+                            <th class="px-4 py-2 text-right">Trades</th>
+                            <th class="px-4 py-2 text-right">Win Rate</th>
+                            <th class="px-4 py-2 text-right">Profitto</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        {% for row in asset_table %}
-                        <tr class="border-b dark:border-gray-700">
+                        {% for row in tf_table %}
+                        <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                             <td class="px-4 py-2 font-bold">{{ row.name }}</td>
-                            <td class="px-4 py-2">{{ row.total }}</td>
-                            <td class="px-4 py-2">{{ row.win_rate }}%</td>
-                            <td class="px-4 py-2 text-right font-bold {% if row.result>0 %}text-green-500{% else %}text-red-500{% endif %}">{{ row.result }}%</td>
+                            <td class="px-4 py-2 text-right">{{ row.total }}</td>
+                            <td class="px-4 py-2 text-right font-bold {% if row.win_rate >= 50 %}text-green-600{% else %}text-red-600{% endif %}">{{ row.win_rate }}%</td>
+                            <td class="px-4 py-2 text-right font-bold {% if row.result > 0 %}text-green-600{% else %}text-red-600{% endif %}">{{ row.result }}%</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden">
-                <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-bold text-gray-700 dark:text-white">Long vs Short</div>
-                <div class="p-4 space-y-4">
-                    <div class="flex justify-between items-center border-b pb-2 dark:border-gray-700">
-                        <span class="font-bold text-green-500">LONG</span>
-                        <div class="text-right">
-                            <div class="text-2xl font-bold dark:text-white">{{ ls_stats['Long']['total'] }}</div>
-                            <div class="text-xs text-gray-500">Win Rate: {{ long_wr }}%</div>
-                            <div class="text-sm font-bold {% if ls_stats['Long']['res']>0 %}text-green-500{% else %}text-red-500{% endif %}">{{ ls_stats['Long']['res']|round(2) }}%</div>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="font-bold text-red-500">SHORT</span>
-                        <div class="text-right">
-                            <div class="text-2xl font-bold dark:text-white">{{ ls_stats['Short']['total'] }}</div>
-                            <div class="text-xs text-gray-500">Win Rate: {{ short_wr }}%</div>
-                            <div class="text-sm font-bold {% if ls_stats['Short']['res']>0 %}text-green-500{% else %}text-red-500{% endif %}">{{ ls_stats['Short']['res']|round(2) }}%</div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
         </div>
@@ -96,6 +111,9 @@
     </div>
 
     <script>
+        // Check Dark Mode
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+
         {% if not no_data %}
         // Equity Chart
         new Chart(document.getElementById('equityChart'), {
@@ -107,14 +125,24 @@
             options: {responsive: true, maintainAspectRatio: false, scales: {x: {display: false}}}
         });
 
-        // Day Chart (Bar)
-        new Chart(document.getElementById('dayChart'), {
+        // Hourly Stacked Chart
+        new Chart(document.getElementById('hourlyChart'), {
             type: 'bar',
             data: {
-                labels: {{ day_labels | safe }},
-                datasets: [{label: 'Win Rate %', data: {{ day_data | safe }}, backgroundColor: '#10B981'}]
+                labels: {{ hours_labels | safe }},
+                datasets: [
+                    {label: 'Target', data: {{ data_target | safe }}, backgroundColor: '#10B981'}, // Verde
+                    {label: 'Stop Loss', data: {{ data_stop | safe }}, backgroundColor: '#EF4444'}, // Rosso
+                    {label: 'Breakeven', data: {{ data_be | safe }}, backgroundColor: '#9CA3AF'}   // Grigio
+                ]
             },
-            options: {responsive: true, maintainAspectRatio: false, scales: {y: {beginAtZero: true, max: 100}}}
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    x: {stacked: true},
+                    y: {stacked: true, beginAtZero: true}
+                }
+            }
         });
         {% endif %}
     </script>
