@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
 from datetime import datetime
-from sqlalchemy import func, extract
+from sqlalchemy import func
 import json
 import statistics 
 
@@ -23,7 +23,7 @@ def add_header(response):
 
 # --- CONFIG ---
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'chiave-segreta-sviluppo-locale')
-ADMIN_USER = "matte" 
+ADMIN_USER = "Matteo" 
 
 database_url = os.environ.get('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
@@ -127,24 +127,18 @@ def settings():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # FILTRI DASHBOARD
     pair_filter = request.args.get('pair_filter')
     outcome_filter = request.args.get('outcome_filter')
-    date_filter = request.args.get('date_filter') # Mese corrente: "2023-11"
+    date_filter = request.args.get('date_filter')
 
     query = JournalEntry.query
     if current_user.role != 'admin':
         query = query.filter_by(user_id=current_user.id)
     
-    # Applicazione Filtri
-    if pair_filter:
-        query = query.filter(JournalEntry.pair == pair_filter)
-    if outcome_filter:
-        query = query.filter(JournalEntry.outcome == outcome_filter)
+    if pair_filter: query = query.filter(JournalEntry.pair == pair_filter)
+    if outcome_filter: query = query.filter(JournalEntry.outcome == outcome_filter)
     if date_filter:
-        # Filtro per mese/anno (Formato YYYY-MM)
         year, month = date_filter.split('-')
-        # Nota: estrazione generica per compatibilità SQL
         query = query.filter(db.extract('year', JournalEntry.date) == int(year))
         query = query.filter(db.extract('month', JournalEntry.date) == int(month))
 
@@ -175,56 +169,74 @@ def statistics_page():
     total_active = len(active_trades)
     num_wins = len(wins)
     num_losses = len(losses)
+    num_be = len([t for t in active_trades if t.outcome == 'Breakeven'])
     
+    num_non_fill = len([t for t in trades if t.outcome == 'Non Fillato'])
+    num_setup = len([t for t in trades if t.outcome == 'Setup'])
+
     win_rate = round((num_wins / total_active * 100), 2) if total_active > 0 else 0
-    gross_profit = sum(wins)
-    gross_loss = abs(sum(losses))
-    net_result = round(gross_profit - gross_loss, 2)
-    profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else round(gross_profit, 2)
+    profit_factor = round(sum(wins) / abs(sum(losses)), 2) if losses else round(sum(wins), 2)
+    net_result = round(sum(wins) - abs(sum(losses)), 2)
     expectancy = round(((num_wins/total_active) * (statistics.mean(wins) if wins else 0)) - ((num_losses/total_active) * (statistics.mean(losses) if losses else 0)), 2) if total_active > 0 else 0
 
-    # 2. ANALISI ASSET (Nuova)
-    asset_stats = {}
-    for t in active_trades:
-        if t.pair not in asset_stats: asset_stats[t.pair] = {'total': 0, 'wins': 0, 'result': 0.0}
-        asset_stats[t.pair]['total'] += 1
-        asset_stats[t.pair]['result'] += t.result_percent
-        if t.outcome == 'Target': asset_stats[t.pair]['wins'] += 1
-    
-    asset_table = []
-    for pair, data in asset_stats.items():
-        asset_table.append({'name': pair, 'total': data['total'], 'win_rate': round(data['wins']/data['total']*100, 1), 'result': round(data['result'], 2)})
-    asset_table.sort(key=lambda x: x['result'], reverse=True) # Ordinati per profitto
-
-    # 3. ANALISI GIORNO SETTIMANA (Nuova)
-    # 0=Mon, 6=Sun
-    day_map = {0: 'Lun', 1: 'Mar', 2: 'Mer', 3: 'Gio', 4: 'Ven', 5: 'Sab', 6: 'Dom'}
-    day_stats = {d: {'wins': 0, 'total': 0} for d in day_map.values()}
+    # 2. ANALISI CONFLUENZE (Tabella Automatica Pro/Contro)
+    tag_stats = {} # { 'Trendline': {'total':10, 'wins':5, 'loss':3, 'be':2}, ... }
     
     for t in active_trades:
-        day_name = day_map[t.date.weekday()]
-        day_stats[day_name]['total'] += 1
-        if t.outcome == 'Target': day_stats[day_name]['wins'] += 1
+        # Uniamo liste pro e contro in un unico calderone di tag da analizzare
+        tags = []
+        if t.selected_pros: tags.extend([p.strip() for p in t.selected_pros.split(',') if p.strip()])
+        if t.selected_cons: tags.extend([c.strip() for c in t.selected_cons.split(',') if c.strip()])
         
-    day_labels = list(day_map.values())
-    day_data = []
-    for day in day_labels:
-        data = day_stats[day]
-        wr = round((data['wins'] / data['total'] * 100), 1) if data['total'] > 0 else 0
-        day_data.append(wr)
+        for tag in tags:
+            if tag not in tag_stats: tag_stats[tag] = {'total':0, 'wins':0, 'loss':0, 'be':0}
+            tag_stats[tag]['total'] += 1
+            if t.outcome == 'Target': tag_stats[tag]['wins'] += 1
+            elif t.outcome == 'Stop Loss': tag_stats[tag]['loss'] += 1
+            elif t.outcome == 'Breakeven': tag_stats[tag]['be'] += 1
 
-    # 4. LONG vs SHORT (Nuova)
-    ls_stats = {'Long': {'total':0, 'wins':0, 'res':0}, 'Short': {'total':0, 'wins':0, 'res':0}}
-    for t in active_trades:
-        if t.direction in ls_stats:
-            ls_stats[t.direction]['total'] += 1
-            ls_stats[t.direction]['res'] += t.result_percent
-            if t.outcome == 'Target': ls_stats[t.direction]['wins'] += 1
+    # Formattazione lista ordinata per Totale Apparizioni
+    confluence_table = []
+    for tag, data in tag_stats.items():
+        wr = round(data['wins']/data['total']*100, 1) if data['total']>0 else 0
+        confluence_table.append({'name': tag, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr})
+    confluence_table.sort(key=lambda x: x['total'], reverse=True)
+
+    # 3. GRAFICO ORARIO STACKED (Distribuzione Esiti per Ora)
+    # Struttura: { 0: {'Target':0, 'Stop Loss':0, 'Breakeven':0}, 1: ... }
+    hourly_dist = {h: {'Target': 0, 'Stop Loss': 0, 'Breakeven': 0} for h in range(24)}
     
-    long_wr = round(ls_stats['Long']['wins']/ls_stats['Long']['total']*100, 1) if ls_stats['Long']['total'] > 0 else 0
-    short_wr = round(ls_stats['Short']['wins']/ls_stats['Short']['total']*100, 1) if ls_stats['Short']['total'] > 0 else 0
+    for t in active_trades:
+        if t.time:
+            try:
+                h = int(t.time.split(':')[0])
+                if t.outcome in ['Target', 'Stop Loss', 'Breakeven']:
+                    hourly_dist[h][t.outcome] += 1
+            except: pass
 
-    # Dati Grafici Standard
+    # Preparazione Array per Chart.js
+    hours_labels = [f"{h:02d}:00" for h in range(24)]
+    data_target = [hourly_dist[h]['Target'] for h in range(24)]
+    data_stop = [hourly_dist[h]['Stop Loss'] for h in range(24)]
+    data_be = [hourly_dist[h]['Breakeven'] for h in range(24)]
+
+    # 4. ALTRE TABELLE
+    tf_stats = {}
+    for t in active_trades:
+        if t.timeframe:
+            for tf in t.timeframe.split(','):
+                tf = tf.strip()
+                if tf not in tf_stats: tf_stats[tf] = {'total': 0, 'wins': 0, 'result': 0.0}
+                tf_stats[tf]['total'] += 1
+                tf_stats[tf]['result'] += t.result_percent
+                if t.outcome == 'Target': tf_stats[tf]['wins'] += 1
+    
+    tf_table = []
+    for tf, data in tf_stats.items():
+        tf_table.append({'name': tf, 'total': data['total'], 'win_rate': round(data['wins']/data['total']*100,1) if data['total'] else 0, 'result': round(data['result'], 2)})
+    tf_table.sort(key=lambda x: x['total'], reverse=True)
+
+    # Grafico Equity
     chart_labels, chart_data = [], []
     run_tot = 0
     for t in sorted(active_trades, key=lambda x: x.date):
@@ -234,11 +246,10 @@ def statistics_page():
 
     return render_template('statistics.html', no_data=False, user=current_user, admin_view=admin_view,
                            win_rate=win_rate, profit_factor=profit_factor, net_result=net_result, expectancy=expectancy,
-                           total_active=total_active, num_wins=num_wins, num_losses=num_losses,
-                           asset_table=asset_table,
-                           day_labels=json.dumps(day_labels), day_data=json.dumps(day_data),
-                           ls_stats=ls_stats, long_wr=long_wr, short_wr=short_wr,
-                           chart_labels=json.dumps(chart_labels), chart_data=json.dumps(chart_data))
+                           num_non_fill=num_non_fill, num_setup=num_setup, tf_table=tf_table, confluence_table=confluence_table,
+                           chart_labels=json.dumps(chart_labels), chart_data=json.dumps(chart_data),
+                           hours_labels=json.dumps(hours_labels), 
+                           data_target=json.dumps(data_target), data_stop=json.dumps(data_stop), data_be=json.dumps(data_be))
 
 @app.route('/add_trade', methods=['POST'])
 @login_required
@@ -266,7 +277,6 @@ def delete_trade(id):
     if trade.user_id == current_user.id or current_user.role == 'admin':
         db.session.delete(trade)
         db.session.commit()
-        flash('Eliminato.', 'success')
     return redirect(url_for('dashboard'))
 
 @app.route('/edit_trade/<int:id>', methods=['GET', 'POST'])
