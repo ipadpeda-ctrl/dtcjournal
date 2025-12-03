@@ -124,6 +124,7 @@ def settings():
         db.session.commit()
         flash('Setup aggiornato!', 'success')
         return redirect(url_for('settings'))
+    
     u_pros = current_user.pros_settings.split(',') if current_user.pros_settings else []
     u_cons = current_user.cons_settings.split(',') if current_user.cons_settings else []
     while len(u_pros) < 7: u_pros.append("")
@@ -166,11 +167,14 @@ def dashboard():
         active = [t for t in filtered_trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
         wins = [t for t in active if t.outcome == 'Target']
         losses = [t for t in active if t.outcome == 'Stop Loss']
+        
         filter_stats['net_profit'] = round(sum((t.result_percent or 0) for t in filtered_trades), 2)
         filter_stats['wins'] = len(wins)
         filter_stats['loss'] = len(losses)
         filter_stats['be'] = len([t for t in active if t.outcome == 'Breakeven'])
+        
         if len(active) > 0: filter_stats['win_rate'] = round((len(wins) / len(active)) * 100, 1)
+        
         rrs = [t.rr_final for t in filtered_trades if t.rr_final is not None and t.rr_final > 0]
         if rrs: filter_stats['avg_rr'] = round(sum(rrs) / len(rrs), 2)
 
@@ -196,6 +200,7 @@ def statistics_page():
     trades = base_query.order_by(JournalEntry.date.asc()).all()
     if not trades: return render_template('statistics.html', no_data=True, user=current_user, admin_view=admin_view)
 
+    # --- 1. PREPARAZIONE DATI ---
     active_trades = [t for t in trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
     wins = [(t.result_percent or 0) for t in active_trades if t.outcome == 'Target']
     losses = [(t.result_percent or 0) for t in active_trades if t.outcome == 'Stop Loss']
@@ -211,7 +216,6 @@ def statistics_page():
     profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else round(gross_profit, 2)
 
     unique_days = len(set(t.date.strftime('%Y-%m-%d') for t in trades))
-    
     avg_weekly_trades = 0
     if trades:
         delta = (trades[-1].date - trades[0].date).days
@@ -226,13 +230,16 @@ def statistics_page():
     avg_win = round(statistics.mean(wins), 2) if wins else 0
     avg_loss = round(statistics.mean(losses), 2) if losses else 0
     avg_rr_realized = round(avg_win / abs(avg_loss), 2) if avg_loss != 0 else 0
+    
     expectancy = 0
     if total_active > 0:
         win_rate_dec = num_wins / total_active
         loss_rate_dec = num_losses / total_active
         expectancy = round((win_rate_dec * avg_win) - (loss_rate_dec * abs(avg_loss)), 2)
 
-    # EMOZIONI
+    # --- 2. CALCOLO TABELLE (Spostato PRIMA dell'AI) ---
+    
+    # Emozioni
     emo_stats = {}
     for t in trades:
         emo = t.emotions if t.emotions else "Nessuna"
@@ -240,13 +247,14 @@ def statistics_page():
         emo_stats[emo]['total'] += 1
         emo_stats[emo]['res'] += (t.result_percent or 0)
         if t.outcome == 'Target': emo_stats[emo]['wins'] += 1
+    
     emo_table = []
     for emo, data in emo_stats.items():
         wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
         emo_table.append({'name': emo, 'total': data['total'], 'win_rate': wr, 'result': round(data['res'], 2)})
     emo_table.sort(key=lambda x: x['result'], reverse=True)
 
-    # CONFLUENZE
+    # Confluenze
     tag_stats = {} 
     for t in active_trades:
         tags = []
@@ -258,13 +266,14 @@ def statistics_page():
             if t.outcome == 'Target': tag_stats[tag]['wins'] += 1
             elif t.outcome == 'Stop Loss': tag_stats[tag]['loss'] += 1
             elif t.outcome == 'Breakeven': tag_stats[tag]['be'] += 1
+
     confluence_table = []
     for tag, data in tag_stats.items():
         wr = round(data['wins']/data['total']*100, 1) if data['total']>0 else 0
         confluence_table.append({'name': tag, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr})
     confluence_table.sort(key=lambda x: x['total'], reverse=True)
 
-    # TIMEFRAME
+    # Timeframe
     tf_stats = {}
     for t in trades:
         if t.timeframe:
@@ -276,43 +285,62 @@ def statistics_page():
                 if t.outcome == 'Target': tf_stats[tf]['wins'] += 1
                 elif t.outcome == 'Stop Loss': tf_stats[tf]['loss'] += 1
                 elif t.outcome == 'Breakeven': tf_stats[tf]['be'] += 1
+    
     tf_table = []
     for tf, data in tf_stats.items():
         wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
         tf_table.append({'name': tf, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr, 'result': round(data['result'], 2)})
     tf_table.sort(key=lambda x: x['total'], reverse=True)
 
-    # LONG/SHORT
-    ls_stats = {'Long': {'total':0, 'wins':0, 'res':0}, 'Short': {'total':0, 'wins':0, 'res':0}}
+    # Giorni
+    day_map = {0: 'Lun', 1: 'Mar', 2: 'Mer', 3: 'Gio', 4: 'Ven', 5: 'Sab', 6: 'Dom'}
+    day_stats = {d: {'wins': 0, 'total': 0, 'res': 0} for d in day_map.values()}
     for t in trades:
-        if t.direction in ls_stats:
-            ls_stats[t.direction]['total'] += 1
-            ls_stats[t.direction]['res'] += (t.result_percent or 0)
-            if t.outcome == 'Target': ls_stats[t.direction]['wins'] += 1
-    long_wr = round(ls_stats['Long']['wins']/ls_stats['Long']['total']*100, 1) if ls_stats['Long']['total'] > 0 else 0
-    short_wr = round(ls_stats['Short']['wins']/ls_stats['Short']['total']*100, 1) if ls_stats['Short']['total'] > 0 else 0
+        d = day_map[t.date.weekday()]
+        day_stats[d]['total'] += 1
+        day_stats[d]['res'] += (t.result_percent or 0)
+        if t.outcome == 'Target': day_stats[d]['wins'] += 1
+    
+    day_table = []
+    for d, data in day_stats.items():
+        if data['total'] > 0:
+            wr = round(data['wins']/data['total']*100, 1)
+            day_table.append({'name': d, 'total': data['total'], 'win_rate': wr, 'res': round(data['res'], 2)})
+    day_table.sort(key=lambda x: x['res'], reverse=True)
 
-    # ASSETS
+    # Asset
     asset_stats = {}
     for t in trades:
         if t.pair not in asset_stats: asset_stats[t.pair] = {'total':0, 'wins':0, 'res':0}
         asset_stats[t.pair]['total'] += 1
         asset_stats[t.pair]['res'] += (t.result_percent or 0)
         if t.outcome == 'Target': asset_stats[t.pair]['wins'] += 1
+    
     asset_best = max(asset_stats.items(), key=lambda x: x[1]['res'])[0] if asset_stats else "N/D"
     asset_worst = min(asset_stats.items(), key=lambda x: x[1]['res'])[0] if asset_stats else "N/D"
 
-    # AI Q&A GENERATION
+    # Long/Short
+    ls_stats = {'Long': {'total':0, 'wins':0, 'res':0}, 'Short': {'total':0, 'wins':0, 'res':0}}
+    for t in trades:
+        if t.direction in ls_stats:
+            ls_stats[t.direction]['total'] += 1
+            ls_stats[t.direction]['res'] += (t.result_percent or 0)
+            if t.outcome == 'Target': ls_stats[t.direction]['wins'] += 1
+    
+    long_wr = round(ls_stats['Long']['wins']/ls_stats['Long']['total']*100, 1) if ls_stats['Long']['total'] > 0 else 0
+    short_wr = round(ls_stats['Short']['wins']/ls_stats['Short']['total']*100, 1) if ls_stats['Short']['total'] > 0 else 0
+
+    # --- 3. AI Q&A GENERATION (Ora che tutte le tabelle esistono) ---
     ai_qa = []
     
-    # Q1: Performance Generale
+    # Q1: Performance
     perf_status = "Eccellente" if win_rate > 60 and profit_factor > 1.5 else "Buona" if win_rate > 40 and profit_factor > 1 else "In difficoltà"
     ai_qa.append({
         'q': "Come sto andando in generale?",
         'a': f"La tua performance è **{perf_status}**. Hai un Win Rate del {win_rate}% e un Profit Factor di {profit_factor}. Il tuo R:R medio realizzato è 1:{avg_rr_realized}."
     })
 
-    # Q2: Punti di Forza
+    # Q2: Forza
     best_day = day_table[0]['name'] if day_table else "N/D"
     best_tf = tf_table[0]['name'] if tf_table else "N/D"
     ai_qa.append({
@@ -320,21 +348,21 @@ def statistics_page():
         'a': f"Sei molto forte il **{best_day}** e sul timeframe **{best_tf}**. L'asset che ti paga di più è **{asset_best}**. Considera di aumentare il rischio su questi setup."
     })
 
-    # Q3: Punti Deboli
+    # Q3: Debolezze
     worst_emo = emo_table[-1]['name'] if emo_table and emo_table[-1]['result'] < 0 else "Nessuna emozione critica"
     ai_qa.append({
         'q': "Dove sto perdendo soldi?",
         'a': f"Perdi soldi principalmente sull'asset **{asset_worst}**. Inoltre, i tuoi risultati peggiori avvengono quando provi **'{worst_emo}'**."
     })
 
-    # Q4: Gestione Rischio
+    # Q4: Rischio
     risk_advice = "Stabile" if avg_loss > -1.5 else "Troppo aggressiva (Stop > 1.5%)"
     ai_qa.append({
         'q': "La mia gestione del rischio è corretta?",
         'a': f"La tua perdita media è {avg_loss}%, che è considerata **{risk_advice}**. Cerca di mantenere le perdite piccole e costanti."
     })
 
-    # CHART DATA
+    # --- 4. GRAFICI ---
     hourly_dist = {h: {'Target': 0, 'Stop Loss': 0, 'Breakeven': 0} for h in range(24)}
     for t in active_trades:
         if t.time:
