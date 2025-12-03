@@ -155,7 +155,7 @@ def dashboard():
     if filtered_trades:
         active = [t for t in filtered_trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
         wins = [t for t in active if t.outcome == 'Target']
-        filter_stats['net_profit'] = round(sum(t.result_percent for t in filtered_trades), 2)
+        filter_stats['net_profit'] = round(sum((t.result_percent or 0) for t in filtered_trades), 2)
         if len(active) > 0: filter_stats['win_rate'] = round((len(wins) / len(active)) * 100, 1)
         rrs = [t.rr_final for t in filtered_trades if t.rr_final is not None and t.rr_final > 0]
         if rrs: filter_stats['avg_rr'] = round(sum(rrs) / len(rrs), 2)
@@ -182,7 +182,7 @@ def statistics_page():
     trades = base_query.order_by(JournalEntry.date.asc()).all()
     if not trades: return render_template('statistics.html', no_data=True, user=current_user, admin_view=admin_view)
 
-    # 1. KPI BASE
+    # Filtra i trade "attivi" (quelli chiusi con un risultato)
     active_trades = [t for t in trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
     wins = [t.result_percent for t in active_trades if t.outcome == 'Target']
     losses = [t.result_percent for t in active_trades if t.outcome == 'Stop Loss']
@@ -192,10 +192,14 @@ def statistics_page():
     num_losses = len(losses)
     
     win_rate = round((num_wins / total_active * 100), 2) if total_active > 0 else 0
-    profit_factor = round(sum(wins) / abs(sum(losses)), 2) if losses else round(sum(wins), 2)
-    net_result = round(sum(wins) - abs(sum(losses)), 2)
     
-    # 2. CALCOLO GIORNI E MEDIA SETTIMANALE (Fix)
+    # Protezione calcoli matematici
+    sum_wins = sum(wins)
+    sum_losses = abs(sum(losses))
+    net_result = round(sum_wins - sum_losses, 2)
+    profit_factor = round(sum_wins / sum_losses, 2) if sum_losses > 0 else round(sum_wins, 2)
+    
+    # 2. CALCOLO GIORNI E MEDIA SETTIMANALE (Fixato)
     unique_days = len(set(t.date.strftime('%Y-%m-%d') for t in trades))
     
     avg_weekly_trades = 0
@@ -203,12 +207,12 @@ def statistics_page():
         first_date = trades[0].date
         last_date = trades[-1].date
         delta_days = (last_date - first_date).days
-        # Se delta_days è 0 o poco, consideriamo almeno 1 settimana
+        # Se delta_days è 0 (tutti i trade oggi), weeks = 1.
         weeks = max(1, delta_days / 7)
         avg_weekly_trades = round(len(trades) / weeks, 1)
 
-    # 3. Stats Matematiche
-    returns = [t.result_percent for t in active_trades]
+    # 3. Stats Matematiche (StdDev, Sharpe)
+    returns = [t.result_percent for t in active_trades if t.result_percent is not None]
     std_dev = round(statistics.stdev(returns), 2) if len(returns) > 1 else 0
     avg_return = statistics.mean(returns) if returns else 0
     sharpe_ratio = round(avg_return / std_dev, 2) if std_dev > 0 else 0
@@ -223,16 +227,14 @@ def statistics_page():
         loss_rate_dec = num_losses / total_active
         expectancy = round((win_rate_dec * avg_win) - (loss_rate_dec * abs(avg_loss)), 2)
 
-    # 4. TABELLA EMOZIONI (Fix: usa 'active_trades' ma gestisce anche gli altri se hanno risultato)
+    # 4. TABELLA EMOZIONI (Analizza TUTTI i trade, non solo quelli attivi)
     emo_stats = {}
-    # Analizziamo tutti i trade che hanno un risultato % diverso da zero o che sono Target/Stop
-    valid_emo_trades = [t for t in trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven'] or t.result_percent != 0]
-    
-    for t in valid_emo_trades:
+    for t in trades:
         emo = t.emotions if t.emotions else "Nessuna"
         if emo not in emo_stats: emo_stats[emo] = {'total':0, 'wins':0, 'res':0}
         emo_stats[emo]['total'] += 1
-        emo_stats[emo]['res'] += t.result_percent
+        # Somma risultato se esiste, altrimenti 0
+        emo_stats[emo]['res'] += (t.result_percent or 0)
         if t.outcome == 'Target': emo_stats[emo]['wins'] += 1
     
     emo_table = []
@@ -266,36 +268,27 @@ def statistics_page():
     for t in active_trades:
         if t.direction in ls_stats:
             ls_stats[t.direction]['total'] += 1
-            ls_stats[t.direction]['res'] += t.result_percent
+            ls_stats[t.direction]['res'] += (t.result_percent or 0)
             if t.outcome == 'Target': ls_stats[t.direction]['wins'] += 1
     
     long_wr = round(ls_stats['Long']['wins']/ls_stats['Long']['total']*100, 1) if ls_stats['Long']['total'] > 0 else 0
     short_wr = round(ls_stats['Short']['wins']/ls_stats['Short']['total']*100, 1) if ls_stats['Short']['total'] > 0 else 0
 
-    # 7. AI INSIGHTS GENERATION
+    # 7. AI INSIGHTS GENERATION (Logica del Coach)
     ai_insights = []
+    if win_rate < 40: ai_insights.append("📉 Il tuo Win Rate è sotto il 40%. Concentrati sulla qualità dei setup e non sulla quantità.")
+    elif win_rate > 65: ai_insights.append("🔥 Ottimo Win Rate! Stai leggendo il mercato correttamente.")
     
-    # Win Rate Analysis
-    if win_rate < 40: ai_insights.append(f"Il tuo Win Rate ({win_rate}%) è basso. Concentrati su setup ad alta probabilità.")
-    elif win_rate > 60: ai_insights.append(f"Ottimo Win Rate ({win_rate}%)! Stai leggendo bene il mercato.")
+    if profit_factor < 1.0: ai_insights.append("⚠️ Il Profit Factor è negativo. Stai perdendo più di quanto guadagni. Riduci le perdite medie.")
     
-    # Profit Factor
-    if profit_factor < 1.0: ai_insights.append("Attenzione: Il sistema è in perdita (PF < 1). Rivedi la gestione del rischio.")
-    elif profit_factor > 2.0: ai_insights.append("Profit Factor eccellente (> 2.0). Continua così.")
+    if avg_loss < -1.5: ai_insights.append("🛑 I tuoi Stop Loss medi superano l'1.5%. Rischi troppo per singolo trade.")
     
-    # Risk Management
-    if avg_loss < -1.5: ai_insights.append("Stai prendendo stop loss troppo grandi (> 1.5%). Riduci la size.")
-    if avg_rr_realized < 1: ai_insights.append("Il tuo R:R medio è negativo (rischi più di quanto guadagni). Punta a target più ampi.")
+    if unique_days > 0 and (total_active / unique_days) > 5: ai_insights.append("⚡ Fai molti trade al giorno (Overtrading?). Prova a ridurli.")
 
-    # Confluenze
-    if confluence_table:
-        best_tag = confluence_table[0]
-        ai_insights.append(f"La tua conferma migliore è '{best_tag['name']}' con {best_tag['win_rate']}% WR.")
-
-    # Long vs Short
-    if abs(long_wr - short_wr) > 20:
-        stronger = "LONG" if long_wr > short_wr else "SHORT"
-        ai_insights.append(f"Sei molto più forte sui {stronger} ({max(long_wr, short_wr)}% WR). Considera di filtrare il lato opposto.")
+    if emo_table:
+        worst_emo = emo_table[-1]
+        if worst_emo['result'] < 0:
+            ai_insights.append(f"🧠 Psicologia: Quando provi '{worst_emo['name']}', perdi soldi. Evita di tradare in questo stato.")
 
     # Data prep per grafici
     hourly_dist = {h: {'Target': 0, 'Stop Loss': 0, 'Breakeven': 0} for h in range(24)}
@@ -313,8 +306,10 @@ def statistics_page():
 
     chart_labels, chart_data = [], []
     run_tot = 0
-    for t in sorted(active_trades, key=lambda x: x.date):
-        run_tot += t.result_percent
+    # Ordiniamo per data per il grafico
+    chronological = sorted(active_trades, key=lambda x: x.date)
+    for t in chronological:
+        run_tot += (t.result_percent or 0)
         chart_labels.append(t.date.strftime('%d/%m'))
         chart_data.append(round(run_tot, 2))
 
