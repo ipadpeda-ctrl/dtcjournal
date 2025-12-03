@@ -160,7 +160,6 @@ def dashboard():
         query = query.filter(db.extract('year', JournalEntry.date) == int(year))
         query = query.filter(db.extract('month', JournalEntry.date) == int(month))
 
-    # Stats Rapide Filtri (Protezione NoneType)
     filtered_trades = query.all()
     filter_stats = {'total': len(filtered_trades), 'net_profit': 0, 'win_rate': 0, 'avg_rr': 0, 'wins': 0, 'loss': 0, 'be': 0}
     
@@ -169,7 +168,6 @@ def dashboard():
         wins = [t for t in active if t.outcome == 'Target']
         losses = [t for t in active if t.outcome == 'Stop Loss']
         
-        # Usa (t.result_percent or 0) per evitare crash se è None
         filter_stats['net_profit'] = round(sum((t.result_percent or 0) for t in filtered_trades), 2)
         filter_stats['wins'] = len(wins)
         filter_stats['loss'] = len(losses)
@@ -202,10 +200,7 @@ def statistics_page():
     trades = base_query.order_by(JournalEntry.date.asc()).all()
     if not trades: return render_template('statistics.html', no_data=True, user=current_user, admin_view=admin_view)
 
-    # 1. PREPARAZIONE DATI SICURA
-    # Convertiamo i valori None in 0.0 per evitare errori di somma
     active_trades = [t for t in trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
-    
     wins = [(t.result_percent or 0) for t in active_trades if t.outcome == 'Target']
     losses = [(t.result_percent or 0) for t in active_trades if t.outcome == 'Stop Loss']
     
@@ -213,17 +208,11 @@ def statistics_page():
     num_wins = len(wins)
     num_losses = len(losses)
     
-    # 2. KPI CALCOLATI IN MODO SICURO (Anti-ZeroDivisionError)
     win_rate = round((num_wins / total_active * 100), 2) if total_active > 0 else 0
-    
     gross_profit = sum(wins)
-    gross_loss = abs(sum(losses)) # Usa abs() per sicurezza
+    gross_loss = abs(sum(losses))
     net_result = round(gross_profit - gross_loss, 2)
-    
-    if gross_loss > 0:
-        profit_factor = round(gross_profit / gross_loss, 2)
-    else:
-        profit_factor = round(gross_profit, 2) if gross_profit > 0 else 0
+    profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else round(gross_profit, 2)
 
     unique_days = len(set(t.date.strftime('%Y-%m-%d') for t in trades))
     
@@ -233,24 +222,14 @@ def statistics_page():
         weeks = max(1, delta / 7)
         avg_weekly_trades = round(len(trades) / weeks, 1)
 
-    # 3. STATISTICHE AVANZATE (StdDev, Sharpe, Expectancy)
     returns = [(t.result_percent or 0) for t in active_trades]
-    
-    if len(returns) > 1:
-        std_dev = round(statistics.stdev(returns), 2)
-    else:
-        std_dev = 0
-        
+    std_dev = round(statistics.stdev(returns), 2) if len(returns) > 1 else 0
     avg_return = statistics.mean(returns) if returns else 0
     sharpe_ratio = round(avg_return / std_dev, 2) if std_dev > 0 else 0
     
     avg_win = round(statistics.mean(wins), 2) if wins else 0
     avg_loss = round(statistics.mean(losses), 2) if losses else 0
-    
-    if avg_loss != 0:
-        avg_rr_realized = round(avg_win / abs(avg_loss), 2)
-    else:
-        avg_rr_realized = 0
+    avg_rr_realized = round(avg_win / abs(avg_loss), 2) if avg_loss != 0 else 0
     
     expectancy = 0
     if total_active > 0:
@@ -258,7 +237,7 @@ def statistics_page():
         loss_rate_dec = num_losses / total_active
         expectancy = round((win_rate_dec * avg_win) - (loss_rate_dec * abs(avg_loss)), 2)
 
-    # 4. TABELLA EMOZIONI (Include TUTTI i trade, anche Setup/NonFillati se hanno note/emo)
+    # TABELLA EMOZIONI
     emo_stats = {}
     for t in trades:
         emo = t.emotions if t.emotions else "Nessuna"
@@ -273,7 +252,7 @@ def statistics_page():
         emo_table.append({'name': emo, 'total': data['total'], 'win_rate': wr, 'result': round(data['res'], 2)})
     emo_table.sort(key=lambda x: x['result'], reverse=True)
 
-    # 5. CONFLUENZE
+    # 5. CONFLUENZE (AGGIORNATO CON DETTAGLIO TARGET/STOP/BE)
     tag_stats = {} 
     for t in active_trades:
         tags = []
@@ -290,10 +269,29 @@ def statistics_page():
     confluence_table = []
     for tag, data in tag_stats.items():
         wr = round(data['wins']/data['total']*100, 1) if data['total']>0 else 0
+        # Ora passiamo tutti i dati singoli
         confluence_table.append({'name': tag, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr})
     confluence_table.sort(key=lambda x: x['total'], reverse=True)
 
-    # 6. LONG vs SHORT
+    # 6. STATISTICHE TIMEFRAME (AGGIORNATO CON DETTAGLIO TARGET/STOP/BE)
+    tf_stats = {}
+    for t in active_trades:
+        if t.timeframe:
+            for tf in t.timeframe.split(','):
+                tf = tf.strip()
+                if tf not in tf_stats: tf_stats[tf] = {'total': 0, 'wins': 0, 'loss': 0, 'be': 0, 'result': 0.0}
+                tf_stats[tf]['total'] += 1
+                tf_stats[tf]['result'] += (t.result_percent or 0)
+                if t.outcome == 'Target': tf_stats[tf]['wins'] += 1
+                elif t.outcome == 'Stop Loss': tf_stats[tf]['loss'] += 1
+                elif t.outcome == 'Breakeven': tf_stats[tf]['be'] += 1
+    
+    tf_table = []
+    for tf, data in tf_stats.items():
+        wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
+        tf_table.append({'name': tf, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr, 'result': round(data['result'], 2)})
+    tf_table.sort(key=lambda x: x['total'], reverse=True)
+
     ls_stats = {'Long': {'total':0, 'wins':0, 'res':0}, 'Short': {'total':0, 'wins':0, 'res':0}}
     for t in active_trades:
         if t.direction in ls_stats:
@@ -304,20 +302,15 @@ def statistics_page():
     long_wr = round(ls_stats['Long']['wins']/ls_stats['Long']['total']*100, 1) if ls_stats['Long']['total'] > 0 else 0
     short_wr = round(ls_stats['Short']['wins']/ls_stats['Short']['total']*100, 1) if ls_stats['Short']['total'] > 0 else 0
 
-    # 7. AI INSIGHTS
     ai_insights = []
     if win_rate < 40: ai_insights.append(f"Il tuo Win Rate ({win_rate}%) è basso. Seleziona meglio i trade.")
     elif win_rate > 60: ai_insights.append(f"Ottimo Win Rate ({win_rate}%)! La direzione è giusta.")
-    
     if profit_factor < 1: ai_insights.append("Profit Factor < 1. Stai perdendo soldi. Taglia le perdite prima.")
-    
     if avg_loss < -1.5: ai_insights.append(f"Stop medi troppo alti ({avg_loss}%). Riduci il rischio per trade.")
-    
     if emo_table:
         worst = emo_table[-1]
         if worst['result'] < 0: ai_insights.append(f"Quando provi '{worst['name']}', perdi spesso. Attenzione alla psicologia.")
 
-    # Data prep per grafici
     hourly_dist = {h: {'Target': 0, 'Stop Loss': 0, 'Breakeven': 0} for h in range(24)}
     for t in active_trades:
         if t.time:
@@ -339,7 +332,6 @@ def statistics_page():
         chart_labels.append(t.date.strftime('%d/%m'))
         chart_data.append(round(run_tot, 2))
 
-    # Grafici Giornalieri
     day_map = {0: 'Lun', 1: 'Mar', 2: 'Mer', 3: 'Gio', 4: 'Ven', 5: 'Sab', 6: 'Dom'}
     day_stats = {d: {'wins': 0, 'total': 0, 'res': 0} for d in day_map.values()}
     for t in active_trades:
@@ -354,23 +346,6 @@ def statistics_page():
             wr = round(data['wins']/data['total']*100, 1)
             day_table.append({'name': d, 'total': data['total'], 'win_rate': wr, 'res': round(data['res'], 2)})
     day_table.sort(key=lambda x: x['res'], reverse=True)
-
-    # Statistiche TF
-    tf_stats = {}
-    for t in active_trades:
-        if t.timeframe:
-            for tf in t.timeframe.split(','):
-                tf = tf.strip()
-                if tf not in tf_stats: tf_stats[tf] = {'total': 0, 'wins': 0, 'result': 0.0}
-                tf_stats[tf]['total'] += 1
-                tf_stats[tf]['result'] += (t.result_percent or 0)
-                if t.outcome == 'Target': tf_stats[tf]['wins'] += 1
-    
-    tf_table = []
-    for tf, data in tf_stats.items():
-        wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
-        tf_table.append({'name': tf, 'total': data['total'], 'win_rate': wr, 'result': round(data['result'], 2)})
-    tf_table.sort(key=lambda x: x['total'], reverse=True)
 
     return render_template('statistics.html', no_data=False, user=current_user, admin_view=admin_view,
                            win_rate=win_rate, profit_factor=profit_factor, net_result=net_result, expectancy=expectancy,
