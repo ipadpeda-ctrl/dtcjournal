@@ -23,7 +23,7 @@ def add_header(response):
 
 # --- CONFIG ---
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'chiave-segreta-sviluppo-locale')
-ADMIN_USER = "matte" 
+ADMIN_USER = "Matteo" 
 
 database_url = os.environ.get('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
@@ -44,13 +44,20 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(150), nullable=False)
     role = db.Column(db.String(20), default='student') 
     trades = db.relationship('JournalEntry', backref='author', lazy=True)
+    
+    # Impostazioni personali
     pros_settings = db.Column(db.Text, default="Trendline,Supporto,Rottura Struttura") 
     cons_settings = db.Column(db.Text, default="Contro Trend,News in arrivo")
+    
+    # NUOVI CAMPI RICHIESTI
+    trading_rules = db.Column(db.Text, default="1. Attendi chiusura candela\n2. Non tradare durante news rosse")
+    risk_rules = db.Column(db.Text, default="1. Max 1% rischio per trade\n2. Max 3 stop loss al giorno")
+    custom_pairs = db.Column(db.Text, default="") # Per aggiungere nuovi strumenti
 
 class JournalEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    pair = db.Column(db.String(10), nullable=False)
+    pair = db.Column(db.String(20), nullable=False) # Aumentato a 20 char per crypto lunghe
     date = db.Column(db.Date, nullable=False, default=datetime.utcnow)
     time = db.Column(db.String(10)) 
     direction = db.Column(db.String(10)) 
@@ -113,20 +120,31 @@ def logout():
 @login_required
 def settings():
     if request.method == 'POST':
+        # Salvataggio Pro/Contro
         current_user.pros_settings = ",".join([p.strip() for p in request.form.getlist('pros_item') if p.strip()])
         current_user.cons_settings = ",".join([c.strip() for c in request.form.getlist('cons_item') if c.strip()])
+        
+        # Salvataggio Regole
+        current_user.trading_rules = request.form.get('trading_rules')
+        current_user.risk_rules = request.form.get('risk_rules')
+        
+        # Salvataggio Custom Pairs (New)
+        current_user.custom_pairs = request.form.get('custom_pairs')
+        
         db.session.commit()
-        flash('Impostazioni salvate!', 'success')
-        return redirect(url_for('dashboard'))
+        flash('Setup aggiornato con successo!', 'success')
+        return redirect(url_for('settings'))
+    
     u_pros = current_user.pros_settings.split(',') if current_user.pros_settings else []
     u_cons = current_user.cons_settings.split(',') if current_user.cons_settings else []
     while len(u_pros) < 7: u_pros.append("")
     while len(u_cons) < 7: u_cons.append("")
-    return render_template('settings.html', user_pros=u_pros, user_cons=u_cons)
+    return render_template('settings.html', user_pros=u_pros, user_cons=u_cons, user=current_user)
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    # FILTRI DASHBOARD
     pair_filter = request.args.get('pair_filter')
     outcome_filter = request.args.get('outcome_filter')
     date_filter = request.args.get('date_filter')
@@ -135,6 +153,7 @@ def dashboard():
     if current_user.role != 'admin':
         query = query.filter_by(user_id=current_user.id)
     
+    # Applicazione Filtri
     if pair_filter: query = query.filter(JournalEntry.pair == pair_filter)
     if outcome_filter: query = query.filter(JournalEntry.outcome == outcome_filter)
     if date_filter:
@@ -142,13 +161,46 @@ def dashboard():
         query = query.filter(db.extract('year', JournalEntry.date) == int(year))
         query = query.filter(db.extract('month', JournalEntry.date) == int(month))
 
+    # CALCOLO RIEPILOGO FILTRI (Stats veloci sui risultati filtrati)
+    filtered_trades = query.all()
+    
+    filter_stats = {
+        'total': len(filtered_trades),
+        'net_profit': 0,
+        'win_rate': 0,
+        'avg_rr': 0,
+        'wins': 0, 'loss': 0, 'be': 0
+    }
+    
+    if filtered_trades:
+        active = [t for t in filtered_trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
+        wins = [t for t in active if t.outcome == 'Target']
+        losses = [t for t in active if t.outcome == 'Stop Loss']
+        
+        filter_stats['net_profit'] = round(sum(t.result_percent for t in filtered_trades), 2)
+        filter_stats['wins'] = len(wins)
+        filter_stats['loss'] = len(losses)
+        filter_stats['be'] = len([t for t in active if t.outcome == 'Breakeven'])
+        
+        if len(active) > 0:
+            filter_stats['win_rate'] = round((len(wins) / len(active)) * 100, 1)
+        
+        rrs = [t.rr_final for t in filtered_trades if t.rr_final is not None and t.rr_final > 0]
+        if rrs:
+            filter_stats['avg_rr'] = round(sum(rrs) / len(rrs), 2)
+
     page = request.args.get('page', 1, type=int)
     pagination = query.order_by(JournalEntry.date.desc()).paginate(page=page, per_page=15, error_out=False)
     
     u_pros = [p for p in (current_user.pros_settings.split(',') if current_user.pros_settings else []) if p]
     u_cons = [c for c in (current_user.cons_settings.split(',') if current_user.cons_settings else []) if c]
+    
+    # Preparazione lista pair personalizzati per i menu
+    custom_pairs_list = [p.strip().upper() for p in (current_user.custom_pairs.split(',') if current_user.custom_pairs else []) if p.strip()]
 
-    return render_template('dashboard.html', pagination=pagination, admin_view=(current_user.role == 'admin'), user=current_user, user_pros=u_pros, user_cons=u_cons)
+    return render_template('dashboard.html', pagination=pagination, admin_view=(current_user.role == 'admin'), 
+                           user=current_user, user_pros=u_pros, user_cons=u_cons, 
+                           filter_stats=filter_stats, custom_pairs=custom_pairs_list)
 
 @app.route('/statistics')
 @login_required
@@ -169,21 +221,51 @@ def statistics_page():
     total_active = len(active_trades)
     num_wins = len(wins)
     num_losses = len(losses)
-    num_be = len([t for t in active_trades if t.outcome == 'Breakeven'])
     
-    num_non_fill = len([t for t in trades if t.outcome == 'Non Fillato'])
-    num_setup = len([t for t in trades if t.outcome == 'Setup'])
-
     win_rate = round((num_wins / total_active * 100), 2) if total_active > 0 else 0
-    profit_factor = round(sum(wins) / abs(sum(losses)), 2) if losses else round(sum(wins), 2)
-    net_result = round(sum(wins) - abs(sum(losses)), 2)
-    expectancy = round(((num_wins/total_active) * (statistics.mean(wins) if wins else 0)) - ((num_losses/total_active) * (statistics.mean(losses) if losses else 0)), 2) if total_active > 0 else 0
+    gross_profit = sum(wins)
+    gross_loss = abs(sum(losses))
+    net_result = round(gross_profit - gross_loss, 2)
+    profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else round(gross_profit, 2)
+    
+    # 2. NUOVI KPI RICHIESTI
+    unique_days = len(set(t.date for t in trades))
+    
+    # Long vs Short Dettagliato
+    ls_stats = {'Long': {'total':0, 'wins':0, 'res':0}, 'Short': {'total':0, 'wins':0, 'res':0}}
+    for t in active_trades:
+        if t.direction in ls_stats:
+            ls_stats[t.direction]['total'] += 1
+            ls_stats[t.direction]['res'] += t.result_percent
+            if t.outcome == 'Target': ls_stats[t.direction]['wins'] += 1
+    
+    long_wr = round(ls_stats['Long']['wins']/ls_stats['Long']['total']*100, 1) if ls_stats['Long']['total'] > 0 else 0
+    short_wr = round(ls_stats['Short']['wins']/ls_stats['Short']['total']*100, 1) if ls_stats['Short']['total'] > 0 else 0
 
-    # 2. ANALISI CONFLUENZE (Tabella Automatica Pro/Contro)
-    tag_stats = {} # { 'Trendline': {'total':10, 'wins':5, 'loss':3, 'be':2}, ... }
+    # R:R Medio Realizzato
+    avg_win = round(statistics.mean(wins), 2) if wins else 0
+    avg_loss = round(statistics.mean(losses), 2) if losses else 0
+    avg_rr_realized = round(avg_win / abs(avg_loss), 2) if avg_loss != 0 else 0
+
+    # Tabella Giorni Migliori
+    day_map = {0: 'Lun', 1: 'Mar', 2: 'Mer', 3: 'Gio', 4: 'Ven', 5: 'Sab', 6: 'Dom'}
+    day_stats = {d: {'wins': 0, 'total': 0, 'res': 0} for d in day_map.values()}
     
     for t in active_trades:
-        # Uniamo liste pro e contro in un unico calderone di tag da analizzare
+        day_name = day_map[t.date.weekday()]
+        day_stats[day_name]['total'] += 1
+        day_stats[day_name]['res'] += t.result_percent
+        if t.outcome == 'Target': day_stats[day_name]['wins'] += 1
+    
+    day_table = []
+    for d, data in day_stats.items():
+        if data['total'] > 0:
+            day_table.append({'name': d, 'total': data['total'], 'win_rate': round(data['wins']/data['total']*100, 1), 'res': round(data['res'], 2)})
+    day_table.sort(key=lambda x: x['res'], reverse=True) # Ordina per profitto migliore
+
+    # 3. TABELLA CONFLUENZE (Pro/Contro)
+    tag_stats = {} 
+    for t in active_trades:
         tags = []
         if t.selected_pros: tags.extend([p.strip() for p in t.selected_pros.split(',') if p.strip()])
         if t.selected_cons: tags.extend([c.strip() for c in t.selected_cons.split(',') if c.strip()])
@@ -195,17 +277,14 @@ def statistics_page():
             elif t.outcome == 'Stop Loss': tag_stats[tag]['loss'] += 1
             elif t.outcome == 'Breakeven': tag_stats[tag]['be'] += 1
 
-    # Formattazione lista ordinata per Totale Apparizioni
     confluence_table = []
     for tag, data in tag_stats.items():
         wr = round(data['wins']/data['total']*100, 1) if data['total']>0 else 0
         confluence_table.append({'name': tag, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr})
     confluence_table.sort(key=lambda x: x['total'], reverse=True)
 
-    # 3. GRAFICO ORARIO STACKED (Distribuzione Esiti per Ora)
-    # Struttura: { 0: {'Target':0, 'Stop Loss':0, 'Breakeven':0}, 1: ... }
+    # 4. GRAFICI
     hourly_dist = {h: {'Target': 0, 'Stop Loss': 0, 'Breakeven': 0} for h in range(24)}
-    
     for t in active_trades:
         if t.time:
             try:
@@ -214,29 +293,11 @@ def statistics_page():
                     hourly_dist[h][t.outcome] += 1
             except: pass
 
-    # Preparazione Array per Chart.js
     hours_labels = [f"{h:02d}:00" for h in range(24)]
     data_target = [hourly_dist[h]['Target'] for h in range(24)]
     data_stop = [hourly_dist[h]['Stop Loss'] for h in range(24)]
     data_be = [hourly_dist[h]['Breakeven'] for h in range(24)]
 
-    # 4. ALTRE TABELLE
-    tf_stats = {}
-    for t in active_trades:
-        if t.timeframe:
-            for tf in t.timeframe.split(','):
-                tf = tf.strip()
-                if tf not in tf_stats: tf_stats[tf] = {'total': 0, 'wins': 0, 'result': 0.0}
-                tf_stats[tf]['total'] += 1
-                tf_stats[tf]['result'] += t.result_percent
-                if t.outcome == 'Target': tf_stats[tf]['wins'] += 1
-    
-    tf_table = []
-    for tf, data in tf_stats.items():
-        tf_table.append({'name': tf, 'total': data['total'], 'win_rate': round(data['wins']/data['total']*100,1) if data['total'] else 0, 'result': round(data['result'], 2)})
-    tf_table.sort(key=lambda x: x['total'], reverse=True)
-
-    # Grafico Equity
     chart_labels, chart_data = [], []
     run_tot = 0
     for t in sorted(active_trades, key=lambda x: x.date):
@@ -245,8 +306,10 @@ def statistics_page():
         chart_data.append(round(run_tot, 2))
 
     return render_template('statistics.html', no_data=False, user=current_user, admin_view=admin_view,
-                           win_rate=win_rate, profit_factor=profit_factor, net_result=net_result, expectancy=expectancy,
-                           num_non_fill=num_non_fill, num_setup=num_setup, tf_table=tf_table, confluence_table=confluence_table,
+                           win_rate=win_rate, profit_factor=profit_factor, net_result=net_result, 
+                           unique_days=unique_days, total_trades=len(trades), avg_rr_realized=avg_rr_realized,
+                           ls_stats=ls_stats, long_wr=long_wr, short_wr=short_wr, day_table=day_table,
+                           confluence_table=confluence_table,
                            chart_labels=json.dumps(chart_labels), chart_data=json.dumps(chart_data),
                            hours_labels=json.dumps(hours_labels), 
                            data_target=json.dumps(data_target), data_stop=json.dumps(data_stop), data_be=json.dumps(data_be))
@@ -310,11 +373,13 @@ def edit_trade(id):
     cur_lnks = trade.screen_pre.split(',') if trade.screen_pre else []
     u_pros = [p for p in (current_user.pros_settings.split(',') if current_user.pros_settings else []) if p]
     u_cons = [c for c in (current_user.cons_settings.split(',') if current_user.cons_settings else []) if c]
+    custom_pairs_list = [p.strip().upper() for p in (current_user.custom_pairs.split(',') if current_user.custom_pairs else []) if p.strip()]
 
-    return render_template('edit_trade.html', trade=trade, curr_tfs=curr_tfs, curr_pros=curr_pros, curr_cons=curr_cons, user_pros_list=u_pros, user_cons_list=u_cons, val_link1=cur_lnks[0] if len(cur_lnks)>0 else '', val_link2=cur_lnks[1] if len(cur_lnks)>1 else '')
+    return render_template('edit_trade.html', trade=trade, curr_tfs=curr_tfs, curr_pros=curr_pros, curr_cons=curr_cons, 
+                           user_pros_list=u_pros, user_cons_list=u_cons, custom_pairs=custom_pairs_list,
+                           val_link1=cur_lnks[0] if len(cur_lnks)>0 else '', val_link2=cur_lnks[1] if len(cur_lnks)>1 else '')
 
 with app.app_context(): db.create_all()
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5001))
-
     app.run(host="0.0.0.0", port=port)
