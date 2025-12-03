@@ -161,7 +161,7 @@ def dashboard():
         query = query.filter(db.extract('month', JournalEntry.date) == int(month))
 
     filtered_trades = query.all()
-    filter_stats = {'total': len(filtered_trades), 'net_profit': 0, 'win_rate': 0, 'avg_rr': 0, 'wins': 0, 'loss': 0, 'be': 0}
+    filter_stats = {'total': len(filtered_trades), 'net_profit': 0, 'win_rate': 0, 'avg_rr': 0}
     
     if filtered_trades:
         active = [t for t in filtered_trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
@@ -169,12 +169,7 @@ def dashboard():
         losses = [t for t in active if t.outcome == 'Stop Loss']
         
         filter_stats['net_profit'] = round(sum((t.result_percent or 0) for t in filtered_trades), 2)
-        filter_stats['wins'] = len(wins)
-        filter_stats['loss'] = len(losses)
-        filter_stats['be'] = len([t for t in active if t.outcome == 'Breakeven'])
-        
         if len(active) > 0: filter_stats['win_rate'] = round((len(wins) / len(active)) * 100, 1)
-        
         rrs = [t.rr_final for t in filtered_trades if t.rr_final is not None and t.rr_final > 0]
         if rrs: filter_stats['avg_rr'] = round(sum(rrs) / len(rrs), 2)
 
@@ -200,7 +195,7 @@ def statistics_page():
     trades = base_query.order_by(JournalEntry.date.asc()).all()
     if not trades: return render_template('statistics.html', no_data=True, user=current_user, admin_view=admin_view)
 
-    # --- 1. PREPARAZIONE DATI ---
+    # 1. KPI BASE
     active_trades = [t for t in trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
     wins = [(t.result_percent or 0) for t in active_trades if t.outcome == 'Target']
     losses = [(t.result_percent or 0) for t in active_trades if t.outcome == 'Stop Loss']
@@ -237,9 +232,9 @@ def statistics_page():
         loss_rate_dec = num_losses / total_active
         expectancy = round((win_rate_dec * avg_win) - (loss_rate_dec * abs(avg_loss)), 2)
 
-    # --- 2. CALCOLO TABELLE (Spostato PRIMA dell'AI) ---
-    
-    # Emozioni
+    # --- TABELLE CALCOLATE PRIMA DELL'AI ---
+
+    # 1. EMOZIONI
     emo_stats = {}
     for t in trades:
         emo = t.emotions if t.emotions else "Nessuna"
@@ -254,12 +249,13 @@ def statistics_page():
         emo_table.append({'name': emo, 'total': data['total'], 'win_rate': wr, 'result': round(data['res'], 2)})
     emo_table.sort(key=lambda x: x['result'], reverse=True)
 
-    # Confluenze
+    # 2. CONFLUENZE (PRO/CONTRO)
     tag_stats = {} 
     for t in active_trades:
         tags = []
         if t.selected_pros: tags.extend([p.strip() for p in t.selected_pros.split(',') if p.strip()])
         if t.selected_cons: tags.extend([c.strip() for c in t.selected_cons.split(',') if c.strip()])
+        
         for tag in tags:
             if tag not in tag_stats: tag_stats[tag] = {'total':0, 'wins':0, 'loss':0, 'be':0}
             tag_stats[tag]['total'] += 1
@@ -273,7 +269,7 @@ def statistics_page():
         confluence_table.append({'name': tag, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr})
     confluence_table.sort(key=lambda x: x['total'], reverse=True)
 
-    # Timeframe
+    # 3. TIMEFRAME
     tf_stats = {}
     for t in trades:
         if t.timeframe:
@@ -292,7 +288,7 @@ def statistics_page():
         tf_table.append({'name': tf, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr, 'result': round(data['result'], 2)})
     tf_table.sort(key=lambda x: x['total'], reverse=True)
 
-    # Giorni
+    # 4. GIORNI
     day_map = {0: 'Lun', 1: 'Mar', 2: 'Mer', 3: 'Gio', 4: 'Ven', 5: 'Sab', 6: 'Dom'}
     day_stats = {d: {'wins': 0, 'total': 0, 'res': 0} for d in day_map.values()}
     for t in trades:
@@ -308,7 +304,7 @@ def statistics_page():
             day_table.append({'name': d, 'total': data['total'], 'win_rate': wr, 'res': round(data['res'], 2)})
     day_table.sort(key=lambda x: x['res'], reverse=True)
 
-    # Asset
+    # 5. ASSET
     asset_stats = {}
     for t in trades:
         if t.pair not in asset_stats: asset_stats[t.pair] = {'total':0, 'wins':0, 'res':0}
@@ -316,10 +312,16 @@ def statistics_page():
         asset_stats[t.pair]['res'] += (t.result_percent or 0)
         if t.outcome == 'Target': asset_stats[t.pair]['wins'] += 1
     
-    asset_best = max(asset_stats.items(), key=lambda x: x[1]['res'])[0] if asset_stats else "N/D"
-    asset_worst = min(asset_stats.items(), key=lambda x: x[1]['res'])[0] if asset_stats else "N/D"
+    asset_table = []
+    for pair, data in asset_stats.items():
+        wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
+        asset_table.append({'name': pair, 'total': data['total'], 'win_rate': wr, 'res': round(data['res'], 2)})
+    asset_table.sort(key=lambda x: x['res'], reverse=True)
 
-    # Long/Short
+    asset_best = asset_table[0]['name'] if asset_table else "N/D"
+    asset_worst = asset_table[-1]['name'] if asset_table else "N/D"
+
+    # 6. LONG/SHORT
     ls_stats = {'Long': {'total':0, 'wins':0, 'res':0}, 'Short': {'total':0, 'wins':0, 'res':0}}
     for t in trades:
         if t.direction in ls_stats:
@@ -330,17 +332,15 @@ def statistics_page():
     long_wr = round(ls_stats['Long']['wins']/ls_stats['Long']['total']*100, 1) if ls_stats['Long']['total'] > 0 else 0
     short_wr = round(ls_stats['Short']['wins']/ls_stats['Short']['total']*100, 1) if ls_stats['Short']['total'] > 0 else 0
 
-    # --- 3. AI Q&A GENERATION (Ora che tutte le tabelle esistono) ---
+    # --- AI Q&A GENERATION ---
     ai_qa = []
     
-    # Q1: Performance
     perf_status = "Eccellente" if win_rate > 60 and profit_factor > 1.5 else "Buona" if win_rate > 40 and profit_factor > 1 else "In difficoltà"
     ai_qa.append({
         'q': "Come sto andando in generale?",
         'a': f"La tua performance è **{perf_status}**. Hai un Win Rate del {win_rate}% e un Profit Factor di {profit_factor}. Il tuo R:R medio realizzato è 1:{avg_rr_realized}."
     })
 
-    # Q2: Forza
     best_day = day_table[0]['name'] if day_table else "N/D"
     best_tf = tf_table[0]['name'] if tf_table else "N/D"
     ai_qa.append({
@@ -348,21 +348,19 @@ def statistics_page():
         'a': f"Sei molto forte il **{best_day}** e sul timeframe **{best_tf}**. L'asset che ti paga di più è **{asset_best}**. Considera di aumentare il rischio su questi setup."
     })
 
-    # Q3: Debolezze
     worst_emo = emo_table[-1]['name'] if emo_table and emo_table[-1]['result'] < 0 else "Nessuna emozione critica"
     ai_qa.append({
         'q': "Dove sto perdendo soldi?",
         'a': f"Perdi soldi principalmente sull'asset **{asset_worst}**. Inoltre, i tuoi risultati peggiori avvengono quando provi **'{worst_emo}'**."
     })
 
-    # Q4: Rischio
     risk_advice = "Stabile" if avg_loss > -1.5 else "Troppo aggressiva (Stop > 1.5%)"
     ai_qa.append({
         'q': "La mia gestione del rischio è corretta?",
         'a': f"La tua perdita media è {avg_loss}%, che è considerata **{risk_advice}**. Cerca di mantenere le perdite piccole e costanti."
     })
 
-    # --- 4. GRAFICI ---
+    # GRAFICI
     hourly_dist = {h: {'Target': 0, 'Stop Loss': 0, 'Breakeven': 0} for h in range(24)}
     for t in active_trades:
         if t.time:
@@ -389,7 +387,7 @@ def statistics_page():
                            win_rate=win_rate, profit_factor=profit_factor, net_result=net_result, expectancy=expectancy,
                            unique_days=unique_days, avg_weekly_trades=avg_weekly_trades, std_dev=std_dev, sharpe_ratio=sharpe_ratio, avg_rr_realized=avg_rr_realized,
                            total_active=total_active, total_trades=len(trades), num_wins=num_wins, num_losses=num_losses, num_non_fill=len([t for t in trades if t.outcome=='Non Fillato']), num_setup=len([t for t in trades if t.outcome=='Setup']),
-                           confluence_table=confluence_table, emo_table=emo_table, ai_qa=ai_qa,
+                           confluence_table=confluence_table, emo_table=emo_table, ai_qa=ai_qa, asset_table=asset_table,
                            ls_stats=ls_stats, long_wr=long_wr, short_wr=short_wr, day_table=day_table, tf_table=tf_table,
                            chart_labels=json.dumps(chart_labels), chart_data=json.dumps(chart_data),
                            hours_labels=json.dumps(hours_labels), 
