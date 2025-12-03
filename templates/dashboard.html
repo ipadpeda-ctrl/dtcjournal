@@ -16,68 +16,59 @@
                 <h1 class="text-2xl font-bold hidden md:block">Diario di {{ user.username }} {% if admin_view %}<span class="text-red-500 text-sm">(ADMIN)</span>{% endif %}</h1>
             </div>
             <div class="flex gap-2 items-center">
-                <button onclick="toggleDarkMode()" class="p-2 bg-gray-200 dark:bg-gray-700 rounded-full">🌓</button>
-                <a href="/settings" class="bg-gray-200 dark:bg-gray-700 py-2 px-4 rounded font-bold">⚙️ Il Mio Setup</a>
-                <a href="/statistics" class="bg-indigo-600 text-white py-2 px-4 rounded font-bold">📊 Stats</a>
-                <a href="/logout" class="bg-red-500 text-white py-2 px-4 rounded font-bold">Esci</a>
+                <button onclick="toggleDarkMode()" class="p-2 bg-gray-200 dark:bg-gray-700 rounded-full hover:bg-gray-300 transition">🌓</button>
+                <a href="/rules" class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 py-2 px-4 rounded font-bold border border-yellow-300 dark:border-yellow-700 hover:opacity-80 transition">📜 Regole</a>
+                <a href="/settings" class="bg-gray-200 dark:bg-gray-700 py-2 px-4 rounded font-bold hover:bg-gray-300 transition">⚙️ Setup</a>
+                <a href="/statistics" class="bg-indigo-600 text-white py-2 px-4 rounded font-bold hover:bg-indigo-700 transition shadow-lg">📊 Stats</a>
+                <a href="/logout" class="bg-red-500 text-white py-2 px-4 rounded font-bold hover:bg-red-600 transition">Esci</a>
             </div>
         </div>
 
-        <div class="bg-gray-200 dark:bg-gray-800 p-3 rounded shadow mb-6">
-            <div class="flex flex-wrap gap-4 items-center justify-between">
-                <form action="/dashboard" method="GET" class="flex gap-2 flex-wrap w-full md:w-auto items-center">
-                    <span class="font-bold text-sm uppercase text-gray-500">Filtra:</span>
-                    <input type="month" name="date_filter" value="{{ request.args.get('date_filter', '') }}" class="p-1 rounded text-black border dark:bg-gray-600 dark:text-white">
+        <div class="bg-gray-200 dark:bg-gray-800 p-4 rounded shadow mb-6 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex items-center gap-2 w-full md:w-auto">
+                <span class="font-bold text-sm uppercase text-gray-500">Filtra:</span>
+                <form action="/dashboard" method="GET" class="flex gap-2 flex-wrap items-center">
+                    <input type="month" name="date_filter" value="{{ request.args.get('date_filter', '') }}" class="p-1.5 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm">
                     
-                    <select name="pair_filter" class="p-1 rounded text-black border dark:bg-gray-600 dark:text-white w-32">
-                        <option value="">Tutte le Coppie</option>
+                    <select name="pair_filter" class="p-1.5 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm w-28">
+                        <option value="">Asset</option>
                         {% if custom_pairs %}
-                        <optgroup label="I Miei Strumenti">
-                            {% for cp in custom_pairs %}
-                            <option value="{{ cp }}" {% if request.args.get('pair_filter') == cp %}selected{% endif %}>{{ cp }}</option>
-                            {% endfor %}
-                        </optgroup>
+                        <optgroup label="I Miei"><option value="{{ custom_pairs[0] }}">{{ custom_pairs[0] }}</option></optgroup>
                         {% endif %}
-                        <optgroup label="Forex Majors"><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option></optgroup>
-                        <optgroup label="Commodities"><option>XAUUSD</option><option>WTI</option></optgroup>
-                        <optgroup label="Indices"><option>US30</option><option>NAS100</option><option>SPX500</option><option>DAX40</option></optgroup>
-                        <optgroup label="Crypto"><option>BTCUSD</option><option>ETHUSD</option></optgroup>
+                        <optgroup label="Forex"><option>EURUSD</option><option>GBPUSD</option><option>XAUUSD</option></optgroup>
                     </select>
 
-                    <select name="outcome_filter" class="p-1 rounded text-black border dark:bg-gray-600 dark:text-white">
-                        <option value="">Tutti gli Esiti</option>
+                    <select name="outcome_filter" class="p-1.5 rounded border dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm">
+                        <option value="">Esito</option>
                         <option value="Target" {% if request.args.get('outcome_filter') == 'Target' %}selected{% endif %}>Target</option>
                         <option value="Stop Loss" {% if request.args.get('outcome_filter') == 'Stop Loss' %}selected{% endif %}>Stop Loss</option>
-                        <option value="Breakeven" {% if request.args.get('outcome_filter') == 'Breakeven' %}selected{% endif %}>Breakeven</option>
                     </select>
-                    <button type="submit" class="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700">Cerca</button>
-                    <a href="/dashboard" class="text-sm underline text-gray-500 ml-2">Reset</a>
+                    <button type="submit" class="bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-bold hover:bg-blue-700">VAI</button>
+                    <a href="/dashboard" class="text-xs text-gray-500 underline ml-1">Reset</a>
                 </form>
+            </div>
 
-                <div class="flex gap-4 text-sm font-mono bg-white dark:bg-gray-700 px-4 py-2 rounded border dark:border-gray-600">
-                    <div class="text-center"><span class="block text-xs text-gray-500">Trades</span><b class="text-lg">{{ filter_stats.total }}</b></div>
-                    <div class="text-center"><span class="block text-xs text-gray-500">Win Rate</span><b class="{{ 'text-green-600' if filter_stats.win_rate>=50 else 'text-red-500' }} text-lg">{{ filter_stats.win_rate }}%</b></div>
-                    <div class="text-center"><span class="block text-xs text-gray-500">Net Profit</span><b class="{{ 'text-green-600' if filter_stats.net_profit>0 else 'text-red-500' }} text-lg">{{ filter_stats.net_profit }}%</b></div>
-                    <div class="text-center"><span class="block text-xs text-gray-500">Avg RR</span><b class="text-blue-500 text-lg">{{ filter_stats.avg_rr }}</b></div>
-                </div>
+            <div class="flex gap-6 text-sm font-mono bg-white dark:bg-gray-700 px-4 py-2 rounded border dark:border-gray-600 shadow-sm ml-auto">
+                <div class="text-center"><span class="block text-[10px] uppercase text-gray-400">Trades</span><b class="text-lg">{{ filter_stats.total }}</b></div>
+                <div class="text-center"><span class="block text-[10px] uppercase text-gray-400">Win Rate</span><b class="{{ 'text-green-500' if filter_stats.win_rate>=50 else 'text-red-500' }} text-lg">{{ filter_stats.win_rate }}%</b></div>
+                <div class="text-center"><span class="block text-[10px] uppercase text-gray-400">Profit</span><b class="{{ 'text-green-500' if filter_stats.net_profit>0 else 'text-red-500' }} text-lg">{{ filter_stats.net_profit }}%</b></div>
             </div>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
-              <div class="mb-4 p-3 rounded text-white font-bold {{ 'bg-green-500' if category == 'success' else 'bg-red-500' }}">{{ message }}</div>
+              <div class="mb-4 p-3 rounded text-white font-bold shadow-md {{ 'bg-green-600' if category == 'success' else 'bg-red-600' }}">{{ message }}</div>
             {% endfor %}
           {% endif %}
         {% endwith %}
 
-        <div class="bg-white dark:bg-gray-800 p-4 rounded shadow mb-8 border-t-4 border-blue-600">
-            <h2 class="text-lg font-semibold mb-4 border-b dark:border-gray-700 pb-2">Nuova Operazione</h2>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded shadow mb-8 border-t-4 border-blue-600 transition-all hover:shadow-lg">
+            <h2 class="text-lg font-semibold mb-4 border-b dark:border-gray-700 pb-2 text-gray-700 dark:text-gray-200">Inserisci Operazione</h2>
             <form action="/add_trade" method="POST">
-                <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-3">
-                    
-                    <select name="pair" class="border p-2 rounded w-full dark:bg-gray-700 dark:border-gray-600" required>
-                        <option value="" disabled selected>Asset</option>
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
+                    <select name="pair" class="border p-2 rounded w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500" required>
+                        <option value="" disabled selected>Seleziona Asset</option>
                         {% if custom_pairs %}
                         <optgroup label="I Miei Strumenti">
                             {% for cp in custom_pairs %}
@@ -86,43 +77,45 @@
                         </optgroup>
                         {% endif %}
                         <optgroup label="Forex Majors"><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option><option>USDCAD</option><option>AUDUSD</option></optgroup>
-                        <optgroup label="Forex Crosses"><option>EURGBP</option><option>GBPJPY</option><option>EURJPY</option><option>AUDJPY</option><option>CADJPY</option></optgroup>
-                        <optgroup label="Commodities"><option>XAUUSD</option><option>XAGUSD</option><option>WTI</option></optgroup>
-                        <optgroup label="Indices"><option>US30</option><option>NAS100</option><option>SPX500</option><option>DAX40</option><option>UK100</option></optgroup>
-                        <optgroup label="Crypto"><option>BTCUSD</option><option>ETHUSD</option><option>SOLUSD</option></optgroup>
+                        <optgroup label="Commodities"><option>XAUUSD</option><option>WTI</option></optgroup>
+                        <optgroup label="Indices"><option>US30</option><option>NAS100</option><option>SPX500</option><option>DAX40</option></optgroup>
+                        <optgroup label="Crypto"><option>BTCUSD</option><option>ETHUSD</option></optgroup>
                     </select>
+                    <input type="date" name="date" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                    <input type="time" name="time" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                    <select name="direction" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option>Long</option><option>Short</option></select>
+                    <select name="outcome" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option>Target</option><option>Stop Loss</option><option>Breakeven</option><option>Non Fillato</option><option>Setup</option></select>
+                    <select name="emotions" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="" disabled selected>Emozione</option><option>ansia</option><option>stress</option><option>paura</option><option>fretta</option><option>tranquillo</option><option>sicuro</option><option>calmo</option></select>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                    <input type="number" step="0.01" name="risk_percent" placeholder="Rischio %" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <input type="number" step="0.01" name="rr_final" placeholder="RR Finale" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <input type="number" step="0.01" name="result_percent" placeholder="Risultato %" class="border p-2 rounded bg-yellow-50 dark:bg-gray-700 dark:text-white font-bold border-yellow-300 dark:border-yellow-600">
+                </div>
 
-                    <input type="date" name="date" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600" required>
-                    <input type="time" name="time" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600" required>
-                    <select name="direction" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600"><option>Long</option><option>Short</option></select>
-                    <select name="outcome" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600"><option>Target</option><option>Stop Loss</option><option>Breakeven</option><option>Non Fillato</option><option>Setup</option></select>
-                    <select name="emotions" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600"><option value="" disabled selected>Emozione</option><option>ansia</option><option>stress</option><option>paura</option><option>fretta</option><option>tranquillo</option><option>sicuro</option><option>calmo</option></select>
-                </div>
-                <div class="grid grid-cols-3 gap-3 mb-3">
-                    <input type="number" step="0.01" name="risk_percent" placeholder="Rischio %" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600">
-                    <input type="number" step="0.01" name="rr_final" placeholder="RR Finale" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600">
-                    <input type="number" step="0.01" name="result_percent" placeholder="Risultato %" class="border p-2 rounded bg-yellow-50 dark:bg-gray-600 font-bold border-yellow-300">
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3 border-t dark:border-gray-700 pt-3">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 border-t dark:border-gray-700 pt-4">
                     <div>
-                        <p class="text-xs font-bold mb-1">Timeframes</p>
-                        <div class="flex flex-wrap gap-2">{% for tf in ['m1','m3','m5','m15','h1','h4','D1'] %}<label class="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"><input type="checkbox" name="timeframe" value="{{tf}}" class="mr-1"> <span class="text-xs">{{tf}}</span></label>{% endfor %}</div>
+                        <p class="text-xs font-bold mb-2 text-gray-500">TIMEFRAMES</p>
+                        <div class="flex flex-wrap gap-2">{% for tf in ['m1','m3','m5','m15','h1','h4','D1'] %}<label class="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600"><input type="checkbox" name="timeframe" value="{{tf}}" class="mr-1 accent-blue-600"> <span class="text-xs">{{tf}}</span></label>{% endfor %}</div>
                     </div>
                     <div>
-                        <p class="text-xs font-bold text-green-600 mb-1">Pro</p>
-                        <div class="space-y-1">{% for pro in user_pros %}<label class="flex items-center"><input type="checkbox" name="pros" value="{{pro}}" class="mr-1 text-green-600"><span class="text-xs">{{pro}}</span></label>{% endfor %}</div>
+                        <p class="text-xs font-bold text-green-600 mb-2">CONFERME (PRO)</p>
+                        <div class="space-y-1">{% for pro in user_pros %}<label class="flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1"><input type="checkbox" name="pros" value="{{pro}}" class="mr-2 accent-green-600"><span class="text-xs">{{pro}}</span></label>{% endfor %}</div>
                     </div>
                     <div>
-                        <p class="text-xs font-bold text-red-600 mb-1">Contro</p>
-                        <div class="space-y-1">{% for con in user_cons %}<label class="flex items-center"><input type="checkbox" name="cons" value="{{con}}" class="mr-1 text-red-600"><span class="text-xs">{{con}}</span></label>{% endfor %}</div>
+                        <p class="text-xs font-bold text-red-600 mb-2">RISCHI (CONTRO)</p>
+                        <div class="space-y-1">{% for con in user_cons %}<label class="flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1"><input type="checkbox" name="cons" value="{{con}}" class="mr-2 accent-red-600"><span class="text-xs">{{con}}</span></label>{% endfor %}</div>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3 mb-3">
-                    <input type="text" name="link1" placeholder="Link 1" class="border p-2 rounded w-full dark:bg-gray-700 dark:border-gray-600">
-                    <input type="text" name="link2" placeholder="Link 2" class="border p-2 rounded w-full dark:bg-gray-700 dark:border-gray-600">
+
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <input type="text" name="link1" placeholder="Link Screenshot 1" class="border p-2 rounded w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm">
+                    <input type="text" name="link2" placeholder="Link Screenshot 2" class="border p-2 rounded w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm">
                 </div>
-                <textarea name="notes" placeholder="Note..." class="border p-2 rounded w-full h-12 mb-3 dark:bg-gray-700 dark:border-gray-600"></textarea>
-                <button type="submit" class="bg-blue-600 text-white font-bold py-2 w-full rounded hover:bg-blue-700">Salva</button>
+                <textarea name="notes" placeholder="Note operative..." class="border p-2 rounded w-full h-16 mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"></textarea>
+                
+                <button type="submit" class="bg-blue-600 text-white font-bold py-2 w-full rounded hover:bg-blue-700 transition shadow-md">Salva nel Journal</button>
             </form>
         </div>
 
@@ -136,17 +129,17 @@
                 </thead>
                 <tbody>
                     {% for trade in pagination.items %}
-                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                         {% if admin_view %}<td class="px-4 py-3 font-bold">{{ trade.author.username }}</td>{% endif %}
-                        <td class="px-4 py-3"><div class="font-bold">{{ trade.date.strftime('%d-%m') }}</div><div class="text-xs">{{ trade.time }}</div></td>
+                        <td class="px-4 py-3"><div class="font-bold text-gray-800 dark:text-white">{{ trade.date.strftime('%d-%m') }}</div><div class="text-xs text-gray-400">{{ trade.time }}</div></td>
                         <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ trade.pair }}</td>
                         <td class="px-4 py-3 text-xs">{{ trade.timeframe }}</td>
-                        <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-bold text-white {% if trade.outcome=='Target' %}bg-green-500{% elif trade.outcome=='Stop Loss' %}bg-red-500{% else %}bg-gray-400{% endif %}">{{ trade.outcome }}</span><div class="text-xs mt-1 font-bold">{{ trade.direction }}</div></td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-bold text-white {% if trade.outcome=='Target' %}bg-green-500{% elif trade.outcome=='Stop Loss' %}bg-red-500{% elif trade.outcome=='Setup' %}bg-purple-500{% else %}bg-gray-400{% endif %}">{{ trade.outcome }}</span><div class="text-xs mt-1 font-bold text-gray-500">{{ trade.direction }}</div></td>
                         <td class="px-4 py-3 font-bold {% if trade.result_percent > 0 %}text-green-500{% elif trade.result_percent < 0 %}text-red-500{% endif %}">{{ trade.result_percent }}%</td>
                         <td class="px-4 py-3 text-xs truncate max-w-[100px]">{{ trade.selected_pros }}</td>
                         <td class="px-4 py-3 text-center">
                             {% if trade.screen_pre %}
-                                {% for link in trade.screen_pre.split(',') %}{% if link %}<a href="{{link}}" target="_blank" class="inline-block w-5 h-5 bg-blue-100 text-blue-600 rounded-full text-center hover:bg-blue-600 hover:text-white transition">↗</a>{% endif %}{% endfor %}
+                                {% for link in trade.screen_pre.split(',') %}{% if link %}<a href="{{link}}" target="_blank" class="inline-block w-6 h-6 bg-blue-100 text-blue-600 rounded-full text-center hover:bg-blue-600 hover:text-white transition leading-6">↗</a>{% endif %}{% endfor %}
                             {% endif %}
                         </td>
                         <td class="px-4 py-3 text-right">
@@ -160,9 +153,9 @@
         </div>
 
         <div class="flex justify-center mt-6 gap-2">
-            {% if pagination.has_prev %}<a href="{{ url_for('dashboard', page=pagination.prev_num, **request.args) }}" class="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded">Prev</a>{% endif %}
-            <span class="px-3 py-1">Pag {{ pagination.page }}</span>
-            {% if pagination.has_next %}<a href="{{ url_for('dashboard', page=pagination.next_num, **request.args) }}" class="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded">Next</a>{% endif %}
+            {% if pagination.has_prev %}<a href="{{ url_for('dashboard', page=pagination.prev_num, **request.args) }}" class="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition">Prev</a>{% endif %}
+            <span class="px-3 py-1 text-gray-500 dark:text-gray-400">Pag {{ pagination.page }}</span>
+            {% if pagination.has_next %}<a href="{{ url_for('dashboard', page=pagination.next_num, **request.args) }}" class="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition">Next</a>{% endif %}
         </div>
     </div>
 

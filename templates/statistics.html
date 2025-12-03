@@ -7,111 +7,108 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 p-6 transition-colors duration-200">
+<body class="bg-gray-100 dark:bg-gray-900 p-6 transition-colors duration-200 text-gray-800 dark:text-gray-100">
 
     <div class="max-w-7xl mx-auto">
         
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Statistiche Avanzate</h1>
-            <a href="/dashboard" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">← Torna al Journal</a>
+            <h1 class="text-3xl font-bold">Statistiche Avanzate</h1>
+            <a href="/dashboard" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition">← Torna al Journal</a>
         </div>
 
         {% if no_data %}
-            <div class="bg-white dark:bg-gray-800 p-8 rounded shadow text-center"><h2 class="text-xl text-gray-600 dark:text-gray-300">Nessun dato. Inizia a tradare!</h2></div>
+            <div class="bg-white dark:bg-gray-800 p-12 rounded-lg shadow-lg text-center">
+                <h2 class="text-2xl font-bold text-gray-600 dark:text-gray-300 mb-4">Nessun dato disponibile 📉</h2>
+                <p class="text-gray-500 dark:text-gray-400 mb-6">Inserisci almeno un trade per sbloccare l'analisi AI.</p>
+                <a href="/dashboard" class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700">Vai alla Dashboard</a>
+            </div>
         {% else %}
 
-        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 mb-8 text-white">
-            <div class="flex items-start gap-4">
-                <div class="bg-white/20 p-3 rounded-full"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
-                <div>
-                    <h3 class="text-xl font-bold mb-2">AI Trading Coach</h3>
-                    <ul class="list-disc pl-5 space-y-1">
-                        {% for advice in ai_insights %}
-                            <li>{{ advice }}</li>
-                        {% else %}
-                            <li>Continua a inserire dati per ricevere consigli personalizzati.</li>
-                        {% endfor %}
-                    </ul>
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-xl shadow-xl p-6 mb-8 text-white">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="bg-white/20 p-3 rounded-full animate-pulse">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
                 </div>
+                <div>
+                    <h2 class="text-2xl font-bold">AI Coach Interattivo</h2>
+                    <p class="text-indigo-100 text-sm">Clicca su una domanda per ricevere l'analisi dei tuoi dati.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for item in ai_qa %}
+                <div class="bg-white/10 rounded-lg p-4 cursor-pointer hover:bg-white/20 transition group" onclick="this.querySelector('.ans').classList.toggle('hidden')">
+                    <div class="flex justify-between items-center font-bold text-lg">
+                        <span>{{ item.q }}</span>
+                        <span class="text-indigo-200 group-hover:text-white">▼</span>
+                    </div>
+                    <div class="ans hidden mt-3 pt-3 border-t border-white/20 text-indigo-50 leading-relaxed">
+                        {{ item.a | safe }}
+                    </div>
+                </div>
+                {% endfor %}
             </div>
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 border-blue-500">
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 border-blue-500 hover:shadow-lg transition">
                 <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Trade / Giorni</p>
-                <p class="text-xl font-bold text-gray-800 dark:text-white">{{ total_trades }} / {{ unique_days }}</p>
-                <p class="text-xs text-gray-400 mt-1">~{{ avg_weekly_trades }} trade/settimana</p>
+                <p class="text-2xl font-bold">{{ total_trades }} / {{ unique_days }}</p>
+                <p class="text-xs text-gray-400 mt-1">~{{ avg_weekly_trades }} settimanali</p>
             </div>
-            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 border-green-500">
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 border-green-500 hover:shadow-lg transition">
                 <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Win Rate</p>
-                <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ win_rate }}%</p>
+                <p class="text-2xl font-bold {{ 'text-green-500' if win_rate>=50 else 'text-red-500' }}">{{ win_rate }}%</p>
             </div>
-            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 {{ 'border-green-500' if net_result >= 0 else 'border-red-500' }}">
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 {{ 'border-green-500' if net_result >= 0 else 'border-red-500' }} hover:shadow-lg transition">
                 <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Net Profit</p>
-                <p class="text-2xl font-bold {{ 'text-green-600 dark:text-green-400' if net_result >= 0 else 'text-red-600 dark:text-red-400' }}">{{ net_result }}%</p>
+                <p class="text-2xl font-bold {{ 'text-green-500' if net_result >= 0 else 'text-red-500' }}">{{ net_result }}%</p>
             </div>
-            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 border-yellow-500">
-                <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">RR Medio Real.</p>
-                <p class="text-2xl font-bold text-gray-800 dark:text-white">1:{{ avg_rr_realized }}</p>
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 border-yellow-500 hover:shadow-lg transition">
+                <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">RR Medio</p>
+                <p class="text-2xl font-bold">1:{{ avg_rr_realized }}</p>
             </div>
-            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 border-purple-500">
-                <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Sharpe Ratio</p>
-                <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ sharpe_ratio }}</p>
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow border-t-4 border-purple-500 hover:shadow-lg transition">
+                <p class="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Profit Factor</p>
+                <p class="text-2xl font-bold">{{ profit_factor }}</p>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div class="bg-white dark:bg-gray-800 p-6 rounded shadow">
-                <h3 class="font-bold text-gray-700 dark:text-gray-200 mb-4 border-b dark:border-gray-700 pb-2">Long vs Short</h3>
-                <div class="flex justify-between items-center mb-4">
-                    <span class="font-bold text-green-500">LONG</span>
-                    <div class="text-right">
-                        <span class="text-2xl font-bold dark:text-white">{{ ls_stats['Long']['total'] }}</span>
-                        <span class="text-xs text-gray-500 block">WR: {{ long_wr }}%</span>
-                        <span class="text-xs font-bold {{ 'text-green-500' if ls_stats['Long']['res']>0 else 'text-red-500' }}">{{ ls_stats['Long']['res']|round(2) }}%</span>
-                    </div>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="font-bold text-red-500">SHORT</span>
-                    <div class="text-right">
-                        <span class="text-2xl font-bold dark:text-white">{{ ls_stats['Short']['total'] }}</span>
-                        <span class="text-xs text-gray-500 block">WR: {{ short_wr }}%</span>
-                        <span class="text-xs font-bold {{ 'text-green-500' if ls_stats['Short']['res']>0 else 'text-red-500' }}">{{ ls_stats['Short']['res']|round(2) }}%</span>
-                    </div>
-                </div>
+                <h3 class="font-bold text-xl mb-4">Equity Curve</h3>
+                <div class="relative h-64 bg-white rounded p-2"><canvas id="equityChart"></canvas></div>
             </div>
-
-            <div class="col-span-2 bg-white dark:bg-gray-800 p-4 rounded shadow">
-                <h3 class="font-bold text-gray-700 dark:text-gray-200 mb-2">Equity Curve</h3>
-                <div class="h-64 bg-white rounded p-2"><canvas id="equityChart"></canvas></div>
+            <div class="bg-white dark:bg-gray-800 p-6 rounded shadow">
+                <h3 class="font-bold text-xl mb-4">Win Rate Orario</h3>
+                <div class="relative h-64 bg-white rounded p-2"><canvas id="hourlyChart"></canvas></div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             
             <div class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden">
-                <div class="bg-gray-800 dark:bg-gray-950 px-4 py-2 font-bold text-white">Confluenze (Pro/Contro)</div>
-                <div class="overflow-x-auto max-h-64">
-                    <table class="w-full text-sm text-left dark:text-gray-300">
+                <div class="bg-gray-800 dark:bg-black px-4 py-3 font-bold text-white flex justify-between">
+                    <span>Performance Confluenze</span>
+                    <span class="text-xs bg-gray-600 px-2 py-1 rounded">Top Ranking</span>
+                </div>
+                <div class="overflow-x-auto max-h-80">
+                    <table class="w-full text-sm text-left">
                         <thead class="bg-gray-100 dark:bg-gray-700 uppercase text-xs sticky top-0">
                             <tr>
                                 <th class="px-4 py-2">Tag</th>
-                                <th class="px-4 py-2">Tot</th>
-                                <th class="px-4 py-2 text-center text-green-600">Target</th>
-                                <th class="px-4 py-2 text-center text-red-600">Stop</th>
-                                <th class="px-4 py-2 text-center text-gray-500">BE</th>
+                                <th class="px-4 py-2 text-center">Win</th>
+                                <th class="px-4 py-2 text-center">Loss</th>
                                 <th class="px-4 py-2 text-right">WR %</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                             {% for row in confluence_table %}
-                            <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                                <td class="px-4 py-2 font-medium">{{ row.name }}</td>
-                                <td class="px-4 py-2">{{ row.total }}</td>
-                                <td class="px-4 py-2 text-center text-green-500 font-bold">{{ row.wins }}</td>
-                                <td class="px-4 py-2 text-center text-red-500 font-bold">{{ row.loss }}</td>
-                                <td class="px-4 py-2 text-center text-gray-400">{{ row.be }}</td>
-                                <td class="px-4 py-2 text-right font-bold {% if row.win_rate >= 50 %}text-green-600{% else %}text-red-600{% endif %}">{{ row.win_rate }}%</td>
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td class="px-4 py-3 font-medium">{{ row.name }}</td>
+                                <td class="px-4 py-3 text-center text-green-500 font-bold">{{ row.wins }}</td>
+                                <td class="px-4 py-3 text-center text-red-500 font-bold">{{ row.loss }}</td>
+                                <td class="px-4 py-3 text-right font-bold">{{ row.win_rate }}%</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -120,78 +117,28 @@
             </div>
 
             <div class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden">
-                <div class="bg-gray-800 dark:bg-gray-950 px-4 py-2 font-bold text-white">Analisi Emotiva</div>
-                <div class="overflow-x-auto max-h-64">
-                    <table class="w-full text-sm text-left dark:text-gray-300">
-                        <thead class="bg-gray-100 dark:bg-gray-700 uppercase text-xs sticky top-0">
-                            <tr><th class="px-4 py-2">Emozione</th><th class="px-4 py-2 text-right">Tot</th><th class="px-4 py-2 text-right">Profitto</th></tr>
-                        </thead>
-                        <tbody>
-                            {% for row in emo_table %}
-                            <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                                <td class="px-4 py-2 font-bold capitalize">{{ row.name }}</td>
-                                <td class="px-4 py-2 text-right">{{ row.total }}</td>
-                                <td class="px-4 py-2 text-right font-bold {% if row.result > 0 %}text-green-500{% else %}text-red-500{% endif %}">{{ row.result }}%</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            
-            <div class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden">
-                <div class="bg-gray-800 dark:bg-gray-950 px-4 py-2 font-bold text-white">Performance Timeframe</div>
-                <div class="overflow-x-auto max-h-64">
-                    <table class="w-full text-sm text-left dark:text-gray-300">
+                <div class="bg-gray-800 dark:bg-black px-4 py-3 font-bold text-white">Impatto Emotivo</div>
+                <div class="overflow-x-auto max-h-80">
+                    <table class="w-full text-sm text-left">
                         <thead class="bg-gray-100 dark:bg-gray-700 uppercase text-xs sticky top-0">
                             <tr>
-                                <th class="px-4 py-2">TF</th>
-                                <th class="px-4 py-2 text-center text-green-600">Win</th>
-                                <th class="px-4 py-2 text-center text-red-600">Loss</th>
-                                <th class="px-4 py-2 text-center text-gray-500">BE</th>
-                                <th class="px-4 py-2 text-right">WR %</th>
-                                <th class="px-4 py-2 text-right">Profitto</th>
+                                <th class="px-4 py-2">Stato</th>
+                                <th class="px-4 py-2 text-center">Trade</th>
+                                <th class="px-4 py-2 text-right">Profitto Totale</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for row in tf_table %}
-                            <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                                <td class="px-4 py-2 font-bold">{{ row.name }}</td>
-                                <td class="px-4 py-2 text-center text-green-500 font-bold">{{ row.wins }}</td>
-                                <td class="px-4 py-2 text-center text-red-500 font-bold">{{ row.loss }}</td>
-                                <td class="px-4 py-2 text-center text-gray-400">{{ row.be }}</td>
-                                <td class="px-4 py-2 text-right font-bold {% if row.win_rate >= 50 %}text-green-600{% else %}text-red-600{% endif %}">{{ row.win_rate }}%</td>
-                                <td class="px-4 py-2 text-right font-bold {% if row.result > 0 %}text-green-600{% else %}text-red-600{% endif %}">{{ row.result }}%</td>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            {% for row in emo_table %}
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td class="px-4 py-3 font-bold capitalize">{{ row.name }}</td>
+                                <td class="px-4 py-3 text-center">{{ row.total }}</td>
+                                <td class="px-4 py-3 text-right font-bold {% if row.result > 0 %}text-green-500{% else %}text-red-500{% endif %}">{{ row.result }}%</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden">
-                <div class="bg-gray-800 dark:bg-gray-950 px-4 py-2 font-bold text-white">Performance Giornaliera</div>
-                <table class="w-full text-sm text-left dark:text-gray-300">
-                    <thead class="bg-gray-100 dark:bg-gray-700 uppercase text-xs"><tr><th class="px-4 py-2">Giorno</th><th class="px-4 py-2 text-right">Win Rate</th><th class="px-4 py-2 text-right">Profitto</th></tr></thead>
-                    <tbody>
-                        {% for row in day_table %}
-                        <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                            <td class="px-4 py-2 font-bold">{{ row.name }}</td>
-                            <td class="px-4 py-2 text-right font-bold {% if row.win_rate >= 50 %}text-green-600{% else %}text-red-600{% endif %}">{{ row.win_rate }}%</td>
-                            <td class="px-4 py-2 text-right font-bold {% if row.res > 0 %}text-green-600{% else %}text-red-600{% endif %}">{{ row.res }}%</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 p-6 rounded shadow">
-            <h3 class="font-bold text-gray-700 dark:text-gray-200 mb-2">Distribuzione Oraria (Esiti)</h3>
-            <div class="h-64 bg-white rounded p-2"><canvas id="hourlyChart"></canvas></div>
         </div>
 
         {% endif %}
@@ -200,13 +147,14 @@
     <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
         {% if not no_data %}
+        
         new Chart(document.getElementById('equityChart'), {
             type: 'line',
             data: {
                 labels: {{ chart_labels | safe }},
                 datasets: [{label: 'Equity %', data: {{ chart_data | safe }}, borderColor: '#4F46E5', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true}]
             },
-            options: {responsive: true, maintainAspectRatio: false, scales: {x: {display: false}}}
+            options: {responsive: true, maintainAspectRatio: false, scales: {x: {display: false}, y: {grid: {color: '#374151'}}}}
         });
 
         new Chart(document.getElementById('hourlyChart'), {
@@ -219,7 +167,10 @@
                     {label: 'Breakeven', data: {{ data_be | safe }}, backgroundColor: '#9CA3AF'}
                 ]
             },
-            options: {responsive: true, maintainAspectRatio: false, scales: {x: {stacked: true}, y: {stacked: true}}}
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {x: {stacked: true, grid: {display: false}}, y: {stacked: true, grid: {color: '#374151'}}}
+            }
         });
         {% endif %}
     </script>
