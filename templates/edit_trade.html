@@ -25,9 +25,10 @@
                     </optgroup>
                     {% endif %}
                     <optgroup label="Forex Majors"><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option><option>USDCAD</option><option>AUDUSD</option></optgroup>
-                    <optgroup label="Commodities"><option>XAUUSD</option><option>WTI</option></optgroup>
-                    <optgroup label="Indices"><option>US30</option><option>NAS100</option><option>SPX500</option><option>DAX40</option></optgroup>
-                    <optgroup label="Crypto"><option>BTCUSD</option><option>ETHUSD</option></optgroup>
+                    <optgroup label="Forex Crosses"><option>EURGBP</option><option>GBPJPY</option><option>EURJPY</option><option>AUDJPY</option><option>CADJPY</option></optgroup>
+                    <optgroup label="Commodities"><option>XAUUSD</option><option>XAGUSD</option><option>WTI</option></optgroup>
+                    <optgroup label="Indices"><option>US30</option><option>NAS100</option><option>SPX500</option><option>DAX40</option><option>UK100</option></optgroup>
+                    <optgroup label="Crypto"><option>BTCUSD</option><option>ETHUSD</option><option>SOLUSD</option></optgroup>
                 </select>
             </div>
 
@@ -35,7 +36,7 @@
             <div><label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Orario</label><input type="time" name="time" value="{{ trade.time }}" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white"></div>
             <div><label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Direzione</label><select name="direction" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white"><option value="Long" {% if trade.direction == 'Long' %}selected{% endif %}>Long</option><option value="Short" {% if trade.direction == 'Short' %}selected{% endif %}>Short</option></select></div>
             <div><label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Esito</label><select name="outcome" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white"><option value="Target" {% if trade.outcome == 'Target' %}selected{% endif %}>Target</option><option value="Stop Loss" {% if trade.outcome == 'Stop Loss' %}selected{% endif %}>Stop Loss</option><option value="Breakeven" {% if trade.outcome == 'Breakeven' %}selected{% endif %}>Breakeven</option><option value="Non Fillato" {% if trade.outcome == 'Non Fillato' %}selected{% endif %}>Non Fillato</option><option value="Setup" {% if trade.outcome == 'Setup' %}selected{% endif %}>Setup</option></select></div>
-            <div><label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Emozioni</label><select name="emotions" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white"><option value="{{ trade.emotions }}" selected>{{ trade.emotions }}</option><option value="ansia">Ansia</option><option value="stress">Stress</option><option value="tranquillo">Tranquillo</option></select></div>
+            <div><label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Emozioni</label><select name="emotions" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white"><option value="{{ trade.emotions }}" selected>{{ trade.emotions }}</option><option value="ansia">Ansia</option><option value="stress">Stress</option><option value="paura">Paura</option><option value="fretta">Fretta</option><option value="tranquillo">Tranquillo</option><option value="sicuro">Sicuro</option><option value="calmo">Calmo</option></select></div>
             <div><label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Rischio %</label><input type="number" step="0.01" name="risk_percent" value="{{ trade.risk_percent }}" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white"></div>
             <div><label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Risultato %</label><input type="number" step="0.01" name="result_percent" value="{{ trade.result_percent }}" class="border dark:border-gray-600 p-2 rounded w-full font-bold bg-white dark:bg-gray-700 dark:text-white"></div>
             <div><label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">RR Finale</label><input type="number" step="0.01" name="rr_final" value="{{ trade.rr_final }}" class="border dark:border-gray-600 p-2 rounded w-full bg-white dark:bg-gray-700 dark:text-white"></div>
@@ -55,8 +56,5 @@
             <div class="col-span-2 flex justify-between mt-4"><a href="/dashboard" class="bg-gray-500 dark:bg-gray-700 text-white font-bold py-2 px-4 rounded">Annulla</a><button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Salva</button></div>
         </form>
     </div>
-    <script>
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
-    </script>
 </body>
 </html>
