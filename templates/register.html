@@ -2,18 +2,22 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Registrazione - Trading Journal</title>
+    <title>Registrazione</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
-<body class="bg-gray-100 h-screen flex justify-center items-center">
+<body class="bg-gray-100 dark:bg-gray-900 h-screen flex justify-center items-center transition-colors">
 
-    <div class="bg-white p-8 rounded shadow-md w-96">
-        <h1 class="text-2xl font-bold mb-6 text-center">Crea Account</h1>
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl w-96 border-t-4 border-green-600">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Crea Account</h1>
+            <p class="text-gray-500 text-sm">Inizia a tracciare i tuoi trade</p>
+        </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
-              <div class="mb-4 p-3 rounded text-white {{ 'bg-green-500' if category == 'success' else 'bg-red-500' }}">
+              <div class="mb-4 p-3 rounded text-white text-sm text-center {{ 'bg-green-500' if category == 'success' else 'bg-red-500' }}">
                 {{ message }}
               </div>
             {% endfor %}
@@ -22,26 +26,28 @@
 
         <form method="POST" action="/register">
             <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2">Scegli Username</label>
-                <input type="text" name="username" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Username</label>
+                <input type="text" name="username" class="w-full p-3 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-green-500" required>
             </div>
             <div class="mb-6">
-                <label class="block text-gray-700 text-sm font-bold mb-2">Scegli Password</label>
-                <input type="password" name="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Password</label>
+                <input type="password" name="password" class="w-full p-3 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-green-500" required>
             </div>
             
             <input type="hidden" name="role" value="student">
 
-            <div class="flex items-center justify-between">
-                <button class="bg-green-600 hover:bg-green-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
-                    Registrati
-                </button>
-                <a class="inline-block align-baseline font-bold text-sm text-blue-600 hover:text-blue-800" href="/login">
-                    Hai già un account?
-                </a>
-            </div>
+            <button class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded transition shadow-lg" type="submit">
+                Registrati
+            </button>
         </form>
+        
+        <p class="mt-6 text-center text-sm text-gray-500">
+            Hai già un account? <a href="/login" class="text-green-500 font-bold hover:underline">Accedi</a>
+        </p>
     </div>
 
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+    </script>
 </body>
 </html>

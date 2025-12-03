@@ -18,7 +18,7 @@
             
             <div class="bg-white dark:bg-gray-800 p-6 rounded shadow mb-8 border-l-4 border-blue-500">
                 <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-white">Strumenti Personalizzati</h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Aggiungi qui coppie o asset extra separati da virgola (es. NVDA, SOLANA, USDMXN). Appariranno nel menu a tendina.</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Aggiungi qui coppie o asset extra separati da virgola (es. NVDA, SOLANA, USDMXN).</p>
                 <input type="text" name="custom_pairs" value="{{ user.custom_pairs }}" class="w-full p-3 border dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 dark:text-white uppercase" placeholder="Es: NVDA, DOGE, USDMXN">
             </div>
 
@@ -55,13 +55,10 @@
             </div>
 
             <div class="text-center">
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-12 rounded shadow-lg transition transform hover:scale-105">
-                    Salva Tutto
-                </button>
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-12 rounded shadow-lg transition transform hover:scale-105">Salva Tutto</button>
             </div>
         </form>
     </div>
-
     <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
     </script>

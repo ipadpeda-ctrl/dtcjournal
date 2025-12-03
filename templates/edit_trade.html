@@ -8,7 +8,7 @@
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-8 h-screen flex justify-center items-center transition-colors">
 
-    <div class="bg-white dark:bg-gray-800 p-8 rounded shadow-lg w-full max-w-3xl overflow-y-auto max-h-screen">
+    <div class="bg-white dark:bg-gray-800 p-8 rounded shadow-lg w-full max-w-3xl overflow-y-auto max-h-screen border-t-4 border-indigo-500">
         <h2 class="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Modifica Operazione</h2>
         
         <form method="POST" action="" class="grid grid-cols-2 gap-6">
@@ -25,10 +25,9 @@
                     </optgroup>
                     {% endif %}
                     <optgroup label="Forex Majors"><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option><option>USDCAD</option><option>AUDUSD</option></optgroup>
-                    <optgroup label="Forex Crosses"><option>EURGBP</option><option>GBPJPY</option><option>EURJPY</option><option>AUDJPY</option><option>CADJPY</option></optgroup>
                     <optgroup label="Commodities"><option>XAUUSD</option><option>WTI</option></optgroup>
-                    <optgroup label="Indices"><option>US30</option><option>NAS100</option><option>SPX500</option><option>DAX40</option><option>UK100</option></optgroup>
-                    <optgroup label="Crypto"><option>BTCUSD</option><option>ETHUSD</option><option>SOLUSD</option></optgroup>
+                    <optgroup label="Indices"><option>US30</option><option>NAS100</option><option>SPX500</option><option>DAX40</option></optgroup>
+                    <optgroup label="Crypto"><option>BTCUSD</option><option>ETHUSD</option></optgroup>
                 </select>
             </div>
 
@@ -56,5 +55,8 @@
             <div class="col-span-2 flex justify-between mt-4"><a href="/dashboard" class="bg-gray-500 dark:bg-gray-700 text-white font-bold py-2 px-4 rounded">Annulla</a><button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Salva</button></div>
         </form>
     </div>
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+    </script>
 </body>
 </html>

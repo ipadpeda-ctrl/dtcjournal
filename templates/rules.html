@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Le Mie Regole</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-8 min-h-screen transition-colors">
+
+    <div class="max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold">📜 Checklist & Risk Management</h1>
+            <a href="/dashboard" class="text-blue-600 dark:text-blue-400 hover:underline">← Torna al Dashboard</a>
+        </div>
+
+        <form method="POST" action="/rules">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                <div class="bg-white dark:bg-gray-800 p-6 rounded shadow border-t-4 border-green-500">
+                    <h2 class="text-xl font-bold mb-4 text-green-700 dark:text-green-400">Checklist Operativa</h2>
+                    <textarea name="trading_rules" class="w-full h-96 p-4 border dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 dark:text-white font-mono text-sm focus:ring-green-500 focus:border-green-500">{{ user.trading_rules }}</textarea>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 p-6 rounded shadow border-t-4 border-red-500">
+                    <h2 class="text-xl font-bold mb-4 text-red-700 dark:text-red-400">Gestione del Rischio</h2>
+                    <textarea name="risk_rules" class="w-full h-96 p-4 border dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 dark:text-white font-mono text-sm focus:ring-red-500 focus:border-red-500">{{ user.risk_rules }}</textarea>
+                </div>
+
+            </div>
+
+            <div class="mt-8 text-center">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-12 rounded shadow-lg transition transform hover:scale-105">
+                    Salva Regole
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+    </script>
+</body>
+</html>
