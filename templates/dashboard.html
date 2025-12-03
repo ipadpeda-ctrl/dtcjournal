@@ -15,28 +15,52 @@
                 <img src="{{ url_for('static', filename='logo.avif') }}" alt="Logo" class="h-16 object-contain bg-white rounded p-1">
                 <h1 class="text-2xl font-bold hidden md:block">Diario di {{ user.username }} {% if admin_view %}<span class="text-red-500 text-sm">(ADMIN)</span>{% endif %}</h1>
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-2 items-center">
                 <button onclick="toggleDarkMode()" class="p-2 bg-gray-200 dark:bg-gray-700 rounded-full">🌓</button>
-                <a href="/settings" class="bg-gray-200 dark:bg-gray-700 py-2 px-4 rounded font-bold">⚙️ Setup</a>
+                <a href="/settings" class="bg-gray-200 dark:bg-gray-700 py-2 px-4 rounded font-bold">⚙️ Il Mio Setup</a>
                 <a href="/statistics" class="bg-indigo-600 text-white py-2 px-4 rounded font-bold">📊 Stats</a>
                 <a href="/logout" class="bg-red-500 text-white py-2 px-4 rounded font-bold">Esci</a>
             </div>
         </div>
 
-        <div class="bg-gray-200 dark:bg-gray-800 p-3 rounded shadow mb-6 flex flex-wrap gap-4 items-center">
-            <span class="font-bold text-sm uppercase text-gray-500">Filtra per:</span>
-            <form action="/dashboard" method="GET" class="flex gap-2 flex-wrap w-full md:w-auto">
-                <input type="month" name="date_filter" value="{{ request.args.get('date_filter', '') }}" class="p-1 rounded text-black border dark:bg-gray-600 dark:text-white">
-                <select name="outcome_filter" class="p-1 rounded text-black border dark:bg-gray-600 dark:text-white">
-                    <option value="">Tutti gli Esiti</option>
-                    <option value="Target" {% if request.args.get('outcome_filter') == 'Target' %}selected{% endif %}>Target</option>
-                    <option value="Stop Loss" {% if request.args.get('outcome_filter') == 'Stop Loss' %}selected{% endif %}>Stop Loss</option>
-                    <option value="Breakeven" {% if request.args.get('outcome_filter') == 'Breakeven' %}selected{% endif %}>Breakeven</option>
-                </select>
-                <input type="text" name="pair_filter" placeholder="Coppia (es. EURUSD)" value="{{ request.args.get('pair_filter', '') }}" class="p-1 rounded text-black border dark:bg-gray-600 dark:text-white uppercase">
-                <button type="submit" class="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700">Cerca</button>
-                <a href="/dashboard" class="text-sm underline text-gray-500 self-center">Reset</a>
-            </form>
+        <div class="bg-gray-200 dark:bg-gray-800 p-3 rounded shadow mb-6">
+            <div class="flex flex-wrap gap-4 items-center justify-between">
+                <form action="/dashboard" method="GET" class="flex gap-2 flex-wrap w-full md:w-auto items-center">
+                    <span class="font-bold text-sm uppercase text-gray-500">Filtra:</span>
+                    <input type="month" name="date_filter" value="{{ request.args.get('date_filter', '') }}" class="p-1 rounded text-black border dark:bg-gray-600 dark:text-white">
+                    
+                    <select name="pair_filter" class="p-1 rounded text-black border dark:bg-gray-600 dark:text-white w-32">
+                        <option value="">Tutte le Coppie</option>
+                        {% if custom_pairs %}
+                        <optgroup label="I Miei Strumenti">
+                            {% for cp in custom_pairs %}
+                            <option value="{{ cp }}" {% if request.args.get('pair_filter') == cp %}selected{% endif %}>{{ cp }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                        <optgroup label="Forex Majors"><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option></optgroup>
+                        <optgroup label="Commodities"><option>XAUUSD</option><option>WTI</option></optgroup>
+                        <optgroup label="Indices"><option>US30</option><option>NAS100</option><option>SPX500</option><option>DAX40</option></optgroup>
+                        <optgroup label="Crypto"><option>BTCUSD</option><option>ETHUSD</option></optgroup>
+                    </select>
+
+                    <select name="outcome_filter" class="p-1 rounded text-black border dark:bg-gray-600 dark:text-white">
+                        <option value="">Tutti gli Esiti</option>
+                        <option value="Target" {% if request.args.get('outcome_filter') == 'Target' %}selected{% endif %}>Target</option>
+                        <option value="Stop Loss" {% if request.args.get('outcome_filter') == 'Stop Loss' %}selected{% endif %}>Stop Loss</option>
+                        <option value="Breakeven" {% if request.args.get('outcome_filter') == 'Breakeven' %}selected{% endif %}>Breakeven</option>
+                    </select>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700">Cerca</button>
+                    <a href="/dashboard" class="text-sm underline text-gray-500 ml-2">Reset</a>
+                </form>
+
+                <div class="flex gap-4 text-sm font-mono bg-white dark:bg-gray-700 px-4 py-2 rounded border dark:border-gray-600">
+                    <div class="text-center"><span class="block text-xs text-gray-500">Trades</span><b class="text-lg">{{ filter_stats.total }}</b></div>
+                    <div class="text-center"><span class="block text-xs text-gray-500">Win Rate</span><b class="{{ 'text-green-600' if filter_stats.win_rate>=50 else 'text-red-500' }} text-lg">{{ filter_stats.win_rate }}%</b></div>
+                    <div class="text-center"><span class="block text-xs text-gray-500">Net Profit</span><b class="{{ 'text-green-600' if filter_stats.net_profit>0 else 'text-red-500' }} text-lg">{{ filter_stats.net_profit }}%</b></div>
+                    <div class="text-center"><span class="block text-xs text-gray-500">Avg RR</span><b class="text-blue-500 text-lg">{{ filter_stats.avg_rr }}</b></div>
+                </div>
+            </div>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -51,14 +75,23 @@
             <h2 class="text-lg font-semibold mb-4 border-b dark:border-gray-700 pb-2">Nuova Operazione</h2>
             <form action="/add_trade" method="POST">
                 <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-3">
+                    
                     <select name="pair" class="border p-2 rounded w-full dark:bg-gray-700 dark:border-gray-600" required>
                         <option value="" disabled selected>Asset</option>
-                        <optgroup label="Forex"><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option><option>USDCAD</option><option>AUDUSD</option></optgroup>
-                        <optgroup label="Crosses"><option>EURGBP</option><option>GBPJPY</option><option>EURJPY</option></optgroup>
-                        <optgroup label="Commodities"><option>XAUUSD</option><option>WTI</option></optgroup>
-                        <optgroup label="Indices"><option>US30</option><option>NAS100</option><option>SPX500</option><option>DAX40</option></optgroup>
-                        <optgroup label="Crypto"><option>BTCUSD</option><option>ETHUSD</option></optgroup>
+                        {% if custom_pairs %}
+                        <optgroup label="I Miei Strumenti">
+                            {% for cp in custom_pairs %}
+                            <option value="{{ cp }}">{{ cp }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                        <optgroup label="Forex Majors"><option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option><option>USDCAD</option><option>AUDUSD</option></optgroup>
+                        <optgroup label="Forex Crosses"><option>EURGBP</option><option>GBPJPY</option><option>EURJPY</option><option>AUDJPY</option><option>CADJPY</option></optgroup>
+                        <optgroup label="Commodities"><option>XAUUSD</option><option>XAGUSD</option><option>WTI</option></optgroup>
+                        <optgroup label="Indices"><option>US30</option><option>NAS100</option><option>SPX500</option><option>DAX40</option><option>UK100</option></optgroup>
+                        <optgroup label="Crypto"><option>BTCUSD</option><option>ETHUSD</option><option>SOLUSD</option></optgroup>
                     </select>
+
                     <input type="date" name="date" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600" required>
                     <input type="time" name="time" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600" required>
                     <select name="direction" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600"><option>Long</option><option>Short</option></select>
@@ -127,13 +160,9 @@
         </div>
 
         <div class="flex justify-center mt-6 gap-2">
-            {% if pagination.has_prev %}
-                <a href="{{ url_for('dashboard', page=pagination.prev_num, **request.args) }}" class="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded">Prev</a>
-            {% endif %}
+            {% if pagination.has_prev %}<a href="{{ url_for('dashboard', page=pagination.prev_num, **request.args) }}" class="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded">Prev</a>{% endif %}
             <span class="px-3 py-1">Pag {{ pagination.page }}</span>
-            {% if pagination.has_next %}
-                <a href="{{ url_for('dashboard', page=pagination.next_num, **request.args) }}" class="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded">Next</a>
-            {% endif %}
+            {% if pagination.has_next %}<a href="{{ url_for('dashboard', page=pagination.next_num, **request.args) }}" class="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded">Next</a>{% endif %}
         </div>
     </div>
 
