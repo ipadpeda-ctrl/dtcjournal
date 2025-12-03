@@ -124,7 +124,6 @@ def settings():
         db.session.commit()
         flash('Setup aggiornato!', 'success')
         return redirect(url_for('settings'))
-    
     u_pros = current_user.pros_settings.split(',') if current_user.pros_settings else []
     u_cons = current_user.cons_settings.split(',') if current_user.cons_settings else []
     while len(u_pros) < 7: u_pros.append("")
@@ -161,20 +160,13 @@ def dashboard():
         query = query.filter(db.extract('month', JournalEntry.date) == int(month))
 
     filtered_trades = query.all()
-    filter_stats = {'total': len(filtered_trades), 'net_profit': 0, 'win_rate': 0, 'avg_rr': 0, 'wins': 0, 'loss': 0, 'be': 0}
+    filter_stats = {'total': len(filtered_trades), 'net_profit': 0, 'win_rate': 0, 'avg_rr': 0}
     
     if filtered_trades:
         active = [t for t in filtered_trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
         wins = [t for t in active if t.outcome == 'Target']
-        losses = [t for t in active if t.outcome == 'Stop Loss']
-        
         filter_stats['net_profit'] = round(sum((t.result_percent or 0) for t in filtered_trades), 2)
-        filter_stats['wins'] = len(wins)
-        filter_stats['loss'] = len(losses)
-        filter_stats['be'] = len([t for t in active if t.outcome == 'Breakeven'])
-        
         if len(active) > 0: filter_stats['win_rate'] = round((len(wins) / len(active)) * 100, 1)
-        
         rrs = [t.rr_final for t in filtered_trades if t.rr_final is not None and t.rr_final > 0]
         if rrs: filter_stats['avg_rr'] = round(sum(rrs) / len(rrs), 2)
 
@@ -200,6 +192,7 @@ def statistics_page():
     trades = base_query.order_by(JournalEntry.date.asc()).all()
     if not trades: return render_template('statistics.html', no_data=True, user=current_user, admin_view=admin_view)
 
+    # 1. KPI BASE (Solo su trade chiusi)
     active_trades = [t for t in trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
     wins = [(t.result_percent or 0) for t in active_trades if t.outcome == 'Target']
     losses = [(t.result_percent or 0) for t in active_trades if t.outcome == 'Stop Loss']
@@ -229,15 +222,16 @@ def statistics_page():
     
     avg_win = round(statistics.mean(wins), 2) if wins else 0
     avg_loss = round(statistics.mean(losses), 2) if losses else 0
-    avg_rr_realized = round(avg_win / abs(avg_loss), 2) if avg_loss != 0 else 0
     
     expectancy = 0
     if total_active > 0:
         win_rate_dec = num_wins / total_active
         loss_rate_dec = num_losses / total_active
         expectancy = round((win_rate_dec * avg_win) - (loss_rate_dec * abs(avg_loss)), 2)
+    
+    avg_rr_realized = round(avg_win / abs(avg_loss), 2) if avg_loss != 0 else 0
 
-    # TABELLA EMOZIONI
+    # 4. TABELLA EMOZIONI (Usa TUTTI i trade per popolare la tabella)
     emo_stats = {}
     for t in trades:
         emo = t.emotions if t.emotions else "Nessuna"
@@ -252,30 +246,9 @@ def statistics_page():
         emo_table.append({'name': emo, 'total': data['total'], 'win_rate': wr, 'result': round(data['res'], 2)})
     emo_table.sort(key=lambda x: x['result'], reverse=True)
 
-    # 5. CONFLUENZE (AGGIORNATO CON DETTAGLIO TARGET/STOP/BE)
-    tag_stats = {} 
-    for t in active_trades:
-        tags = []
-        if t.selected_pros: tags.extend([p.strip() for p in t.selected_pros.split(',') if p.strip()])
-        if t.selected_cons: tags.extend([c.strip() for c in t.selected_cons.split(',') if c.strip()])
-        
-        for tag in tags:
-            if tag not in tag_stats: tag_stats[tag] = {'total':0, 'wins':0, 'loss':0, 'be':0}
-            tag_stats[tag]['total'] += 1
-            if t.outcome == 'Target': tag_stats[tag]['wins'] += 1
-            elif t.outcome == 'Stop Loss': tag_stats[tag]['loss'] += 1
-            elif t.outcome == 'Breakeven': tag_stats[tag]['be'] += 1
-
-    confluence_table = []
-    for tag, data in tag_stats.items():
-        wr = round(data['wins']/data['total']*100, 1) if data['total']>0 else 0
-        # Ora passiamo tutti i dati singoli
-        confluence_table.append({'name': tag, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr})
-    confluence_table.sort(key=lambda x: x['total'], reverse=True)
-
-    # 6. STATISTICHE TIMEFRAME (AGGIORNATO CON DETTAGLIO TARGET/STOP/BE)
+    # 5. TABELLA TIMEFRAMES (Usa TUTTI i trade)
     tf_stats = {}
-    for t in active_trades:
+    for t in trades:
         if t.timeframe:
             for tf in t.timeframe.split(','):
                 tf = tf.strip()
@@ -292,8 +265,29 @@ def statistics_page():
         tf_table.append({'name': tf, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr, 'result': round(data['result'], 2)})
     tf_table.sort(key=lambda x: x['total'], reverse=True)
 
+    # 6. CONFLUENZE
+    tag_stats = {} 
+    for t in trades:
+        tags = []
+        if t.selected_pros: tags.extend([p.strip() for p in t.selected_pros.split(',') if p.strip()])
+        if t.selected_cons: tags.extend([c.strip() for c in t.selected_cons.split(',') if c.strip()])
+        
+        for tag in tags:
+            if tag not in tag_stats: tag_stats[tag] = {'total':0, 'wins':0, 'loss':0, 'be':0}
+            tag_stats[tag]['total'] += 1
+            if t.outcome == 'Target': tag_stats[tag]['wins'] += 1
+            elif t.outcome == 'Stop Loss': tag_stats[tag]['loss'] += 1
+            elif t.outcome == 'Breakeven': tag_stats[tag]['be'] += 1
+
+    confluence_table = []
+    for tag, data in tag_stats.items():
+        wr = round(data['wins']/data['total']*100, 1) if data['total']>0 else 0
+        confluence_table.append({'name': tag, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr})
+    confluence_table.sort(key=lambda x: x['total'], reverse=True)
+
+    # 7. LONG vs SHORT
     ls_stats = {'Long': {'total':0, 'wins':0, 'res':0}, 'Short': {'total':0, 'wins':0, 'res':0}}
-    for t in active_trades:
+    for t in trades:
         if t.direction in ls_stats:
             ls_stats[t.direction]['total'] += 1
             ls_stats[t.direction]['res'] += (t.result_percent or 0)
@@ -302,6 +296,7 @@ def statistics_page():
     long_wr = round(ls_stats['Long']['wins']/ls_stats['Long']['total']*100, 1) if ls_stats['Long']['total'] > 0 else 0
     short_wr = round(ls_stats['Short']['wins']/ls_stats['Short']['total']*100, 1) if ls_stats['Short']['total'] > 0 else 0
 
+    # 8. AI INSIGHTS
     ai_insights = []
     if win_rate < 40: ai_insights.append(f"Il tuo Win Rate ({win_rate}%) è basso. Seleziona meglio i trade.")
     elif win_rate > 60: ai_insights.append(f"Ottimo Win Rate ({win_rate}%)! La direzione è giusta.")
@@ -311,8 +306,9 @@ def statistics_page():
         worst = emo_table[-1]
         if worst['result'] < 0: ai_insights.append(f"Quando provi '{worst['name']}', perdi spesso. Attenzione alla psicologia.")
 
+    # Grafici
     hourly_dist = {h: {'Target': 0, 'Stop Loss': 0, 'Breakeven': 0} for h in range(24)}
-    for t in active_trades:
+    for t in trades:
         if t.time:
             try:
                 h = int(t.time.split(':')[0])
@@ -326,15 +322,16 @@ def statistics_page():
 
     chart_labels, chart_data = [], []
     run_tot = 0
-    chronological = sorted(active_trades, key=lambda x: x.date)
+    chronological = sorted(trades, key=lambda x: x.date)
     for t in chronological:
-        run_tot += (t.result_percent or 0)
-        chart_labels.append(t.date.strftime('%d/%m'))
-        chart_data.append(round(run_tot, 2))
+        if t.outcome in ['Target', 'Stop Loss', 'Breakeven'] and t.result_percent is not None:
+            run_tot += t.result_percent
+            chart_labels.append(t.date.strftime('%d/%m'))
+            chart_data.append(round(run_tot, 2))
 
     day_map = {0: 'Lun', 1: 'Mar', 2: 'Mer', 3: 'Gio', 4: 'Ven', 5: 'Sab', 6: 'Dom'}
     day_stats = {d: {'wins': 0, 'total': 0, 'res': 0} for d in day_map.values()}
-    for t in active_trades:
+    for t in trades:
         d = day_map[t.date.weekday()]
         day_stats[d]['total'] += 1
         day_stats[d]['res'] += (t.result_percent or 0)
