@@ -67,7 +67,7 @@
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="font-bold text-lg text-red-600 dark:text-red-400">⚠️ Risk of Ruin (Simulato)</h3>
-                    <span class="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">Basato su 500 sim</span>
+                    <span class="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">Basato su 1000 sim</span>
                 </div>
                 <div class="grid grid-cols-3 gap-4 text-center">
                     <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded">
@@ -202,6 +202,37 @@
             </div>
         </div>
 
+        <div class="mt-8 bg-white dark:bg-gray-800 rounded shadow overflow-hidden border-t-4 border-green-600">
+            <div class="bg-gray-800 dark:bg-black px-4 py-3 font-bold text-white flex justify-between items-center">
+                <span>🎯 Confluenze (Setup & Conferme)</span>
+                <span class="text-xs font-normal text-gray-300">Dove performi meglio?</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-100 dark:bg-gray-700 uppercase text-xs">
+                        <tr>
+                            <th class="px-4 py-3">Confluenza</th>
+                            <th class="px-4 py-3 text-center">Utilizzi</th>
+                            <th class="px-4 py-3 text-center">Win Rate</th>
+                            <th class="px-4 py-3 text-right">Profitto Totale</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in pros_table %}
+                        <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td class="px-4 py-3 font-bold text-gray-800 dark:text-gray-200">{{ row.name }}</td>
+                            <td class="px-4 py-3 text-center">{{ row.total }}</td>
+                            <td class="px-4 py-3 text-center font-bold {{ 'text-green-500' if row.win_rate >= 50 else 'text-red-500' }}">{{ row.win_rate }}%</td>
+                            <td class="px-4 py-3 text-right font-bold {{ 'text-green-500' if row.result > 0 else 'text-red-500' }}">{{ row.result }}%</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="px-4 py-4 text-center text-gray-500">Nessun dato sulle confluenze.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         {% endif %}
     </div>
 
@@ -215,15 +246,13 @@
         const mcSims = {{ mc_simulations | safe }};
         const projection = {{ projection_data | safe }};
 
-        // Costruisci Datasets: 1 Reale + 20 Montecarlo (faded) + 1 Proiezione
         let datasets = [];
 
-        // Montecarlo (Background lines)
         mcSims.forEach((sim) => {
             datasets.push({
                 label: 'Sim',
                 data: sim,
-                borderColor: 'rgba(156, 163, 175, 0.15)', // Grigio molto chiaro
+                borderColor: 'rgba(156, 163, 175, 0.15)', 
                 borderWidth: 1,
                 pointRadius: 0,
                 fill: false,
@@ -231,11 +260,10 @@
             });
         });
 
-        // Curva Reale
         datasets.push({
             label: 'Equity Reale',
             data: realData,
-            borderColor: '#2563EB', // Blue 600
+            borderColor: '#2563EB', 
             backgroundColor: 'rgba(37, 99, 235, 0.1)',
             borderWidth: 3,
             pointRadius: 3,
@@ -243,18 +271,16 @@
             fill: true
         });
 
-        // Proiezione Futura (appendi alla fine)
-        // Creiamo etichette fittizie per il futuro
         let projLabels = [...labels];
         let emptyPad = new Array(realData.length - 1).fill(null);
-        let projPlotData = [...emptyPad, ...projection]; // Inizia dove finisce il reale
+        let projPlotData = [...emptyPad, ...projection]; 
         
         for(let i=0; i<20; i++) projLabels.push('Futuro ' + (i+1));
 
         datasets.push({
             label: 'Proiezione Teorica',
             data: projPlotData,
-            borderColor: '#10B981', // Green 500
+            borderColor: '#10B981', 
             borderDash: [5, 5],
             borderWidth: 2,
             pointRadius: 0,
@@ -264,7 +290,7 @@
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: projLabels, // Usa etichette estese
+                labels: projLabels, 
                 datasets: datasets
             },
             options: {
@@ -275,7 +301,7 @@
                     tooltip: { mode: 'index', intersect: false }
                 },
                 scales: {
-                    x: { display: false }, // Nascondi asse X per pulizia
+                    x: { display: false }, 
                     y: { grid: { color: '#374151' } }
                 }
             }

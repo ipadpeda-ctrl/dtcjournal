@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Pannello Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-8 min-h-screen transition-colors">
+
+    <div class="max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-red-600">👮 Gestione Utenti (Admin)</h1>
+            <a href="/dashboard" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition">← Dashboard</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="mb-4 p-3 rounded text-white font-bold shadow-md {{ 'bg-green-600' if category == 'success' else 'bg-red-600' if category == 'danger' else 'bg-yellow-600' }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="bg-white dark:bg-gray-800 p-6 rounded shadow mb-8 border-t-4 border-red-500">
+            <h2 class="text-xl font-bold mb-4">Modifica Ruolo</h2>
+            <p class="mb-4 text-sm text-gray-500">Inserisci lo username esatto dell'utente per promuoverlo ad Admin o retrocederlo.</p>
+            
+            <form method="POST" action="/admin_panel" class="flex gap-4 items-end">
+                <div class="w-full">
+                    <label class="block text-sm font-bold mb-2">Username Utente</label>
+                    <input type="text" name="target_username" class="w-full p-3 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required placeholder="Es: MarioRossi">
+                </div>
+                <div>
+                    <button type="submit" name="action" value="promote" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded shadow">Rendi Admin</button>
+                </div>
+                <div>
+                    <button type="submit" name="action" value="demote" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded shadow">Rendi Studente</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded shadow overflow-hidden">
+            <div class="bg-gray-700 px-4 py-3 font-bold text-white">Lista Utenti Registrati</div>
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-200 dark:bg-gray-700 uppercase text-xs">
+                    <tr>
+                        <th class="px-4 py-3">ID</th>
+                        <th class="px-4 py-3">Username</th>
+                        <th class="px-4 py-3">Ruolo</th>
+                        <th class="px-4 py-3 text-right">Trades</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="px-4 py-3">{{ u.id }}</td>
+                        <td class="px-4 py-3 font-bold">{{ u.username }} {% if u.username == super_admin %}(MASTER){% endif %}</td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-1 rounded text-xs font-bold text-white {{ 'bg-red-500' if u.role == 'admin' else 'bg-blue-500' }}">{{ u.role }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right">{{ u.trades|length }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+    </script>
+</body>
+</html>
