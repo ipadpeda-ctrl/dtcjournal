@@ -74,7 +74,7 @@
 
         <div class="bg-white dark:bg-gray-800 p-5 rounded shadow mb-8 border-t-4 border-blue-600 transition-all hover:shadow-lg">
             <h2 class="text-lg font-semibold mb-4 border-b dark:border-gray-700 pb-2 text-gray-700 dark:text-gray-200">Inserisci Operazione</h2>
-            <form action="/add_trade" method="POST">
+            <form action="/add_trade" method="POST" id="tradeForm">
                 <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
                     <select name="pair" class="border p-2 rounded w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500" required>
                         <option value="" disabled selected>Seleziona Asset</option>
@@ -94,16 +94,16 @@
                     <input type="date" name="date" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
                     <input type="time" name="time" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
                     <select name="direction" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option>Long</option><option>Short</option></select>
-                    <select name="outcome" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option>Target</option><option>Stop Loss</option><option>Breakeven</option><option>Non Fillato</option><option>Setup</option></select>
+                    <select name="outcome" id="outcome" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option>Target</option><option>Stop Loss</option><option>Breakeven</option><option>Non Fillato</option><option>Setup</option></select>
                     <select name="emotions" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="" disabled selected>Emozione</option><option>ansia</option><option>stress</option><option>paura</option><option>fretta</option><option>tranquillo</option><option>sicuro</option><option>calmo</option></select>
                 </div>
                 
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-                    <input type="number" step="0.01" name="risk_percent" placeholder="Rischio %" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    <input type="number" step="0.01" name="rr_final" placeholder="RR Finale" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    <input type="number" step="0.1" name="pips_sl" placeholder="Pips SL" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white text-red-500">
-                    <input type="number" step="0.1" name="pips_tp" placeholder="Pips TP" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white text-green-500">
-                    <input type="number" step="0.01" name="result_percent" placeholder="Risultato %" class="border p-2 rounded bg-yellow-50 dark:bg-gray-600 font-bold border-yellow-300 dark:border-yellow-600">
+                    <input type="number" step="0.01" name="risk_percent" id="risk_percent" placeholder="Rischio %" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <input type="number" step="0.01" name="rr_final" id="rr_final" placeholder="RR Finale" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <input type="number" step="0.1" name="pips_sl" id="pips_sl" placeholder="Pips SL" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white text-red-500">
+                    <input type="number" step="0.1" name="pips_tp" id="pips_tp" placeholder="Pips TP" class="border p-2 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white text-green-500">
+                    <input type="number" step="0.01" name="result_percent" id="result_percent" placeholder="Risultato %" class="border p-2 rounded bg-yellow-50 dark:bg-gray-600 font-bold border-yellow-300 dark:border-yellow-600">
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 border-t dark:border-gray-700 pt-4">
@@ -187,6 +187,47 @@
             document.documentElement.classList.toggle('dark');
             localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
         }
+
+        // --- AUTOMAZIONE CAMPI JS ---
+        document.addEventListener("DOMContentLoaded", function() {
+            const riskInput = document.getElementById('risk_percent');
+            const rrInput = document.getElementById('rr_final');
+            const slInput = document.getElementById('pips_sl');
+            const tpInput = document.getElementById('pips_tp');
+            const outcomeSelect = document.getElementById('outcome');
+            const resultInput = document.getElementById('result_percent');
+
+            function calculateStats() {
+                const sl = parseFloat(slInput.value) || 0;
+                const tp = parseFloat(tpInput.value) || 0;
+                const risk = parseFloat(riskInput.value) || 0;
+                const outcome = outcomeSelect.value;
+                let rr = parseFloat(rrInput.value) || 0;
+
+                // 1. Calcola RR se Pips SL > 0
+                if (sl > 0 && tp > 0) {
+                    rr = (tp / sl);
+                    rrInput.value = rr.toFixed(2);
+                }
+
+                // 2. Calcola Risultato % basato su Esito
+                if (outcome === 'Stop Loss') {
+                    // Se SL -> Perdita pari al rischio (negativo)
+                    if (risk > 0) resultInput.value = (-risk).toFixed(2);
+                } else if (outcome === 'Target') {
+                    // Se Target -> Rischio * RR
+                    if (risk > 0 && rr > 0) resultInput.value = (risk * rr).toFixed(2);
+                } else if (outcome === 'Breakeven') {
+                    resultInput.value = 0;
+                }
+            }
+
+            // Event Listeners: ricalcola quando i dati cambiano
+            [riskInput, rrInput, slInput, tpInput, outcomeSelect].forEach(el => {
+                if(el) el.addEventListener('input', calculateStats);
+                if(el) el.addEventListener('change', calculateStats);
+            });
+        });
     </script>
 </body>
 </html>
