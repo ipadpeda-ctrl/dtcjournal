@@ -205,8 +205,13 @@ def statistics_page():
 
     trades = base_query.order_by(JournalEntry.date.asc()).all()
     
+    # --- CALCOLO GIORNI OPERATIVI (Nuovo) ---
+    # Usiamo un set per contare le date uniche
+    unique_dates = set(t.date for t in trades)
+    total_days = len(unique_dates)
+
     if not trades: 
-        return render_template('statistics.html', no_data=True, user=current_user, admin_view=admin_view)
+        return render_template('statistics.html', no_data=True, user=current_user, admin_view=admin_view, total_trades=0, total_days=0)
 
     # --- BASE KPI ---
     active_trades = [t for t in trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
@@ -237,21 +242,16 @@ def statistics_page():
     avg_loss = round(statistics.mean(losses), 2) if losses else 0
     
     # Risk of Ruin Logic (Simulata semplificata)
-    # Probabilità di toccare -10%, -20%, -100% dato il WR e Payoff
     risk_of_ruin = {'10': 0, '20': 0, '100': 0}
     if total_active > 10 and gross_loss > 0:
-        # Modello semplice basato su formula RoR
         win_prob = win_rate / 100
         loss_prob = 1 - win_prob
-        payoff = abs(avg_win / avg_loss) if avg_loss != 0 else 1
-        # Formula approssimativa RoR = ((1 - WR) / (1 + WR))^Units
-        # Qui usiamo una stima basata su 1000 iterazioni Montecarlo per calcolare il drawdown
+        
         mc_drawdowns = []
         for _ in range(500):
             sim_equity = 0
             max_dd = 0
             peak = 0
-            # Simula 100 trade futuri
             for _ in range(100):
                 outcome = random.choices([avg_win, avg_loss], weights=[win_prob, loss_prob])[0]
                 sim_equity += outcome
@@ -265,22 +265,18 @@ def statistics_page():
         risk_of_ruin['100'] = round(len([d for d in mc_drawdowns if d >= 100]) / 500 * 100, 1)
 
     # --- CALENDAR TOPSTEP STYLE ---
-    # 1. Trova i trade del mese selezionato
     month_trades = [t for t in trades if t.date.year == sel_year and t.date.month == sel_month]
     month_pl = sum([(t.result_percent or 0) for t in month_trades])
     
-    # 2. Costruisci griglia calendario
-    cal_obj = cal_module.Calendar(firstweekday=6) # 0=Lun, 6=Dom. Topstep usa Dom come inizio riga solitamente, o Lun. Mettiamo Domenica start
+    cal_obj = cal_module.Calendar(firstweekday=6) 
     month_days = cal_obj.monthdayscalendar(sel_year, sel_month)
     
     calendar_data = []
-    # Struttura: [ { 'week_num': 1, 'days': [ {day:1, pl: 10, count:2}, ... ], 'week_pl': 100 }, ... ]
-    
     for week in month_days:
         week_stats = {'days': [], 'week_pl': 0, 'trade_count': 0}
         for day in week:
             if day == 0:
-                week_stats['days'].append(None) # Cella vuota
+                week_stats['days'].append(None)
             else:
                 d_trades = [t for t in month_trades if t.date.day == day]
                 d_pl = round(sum([(t.result_percent or 0) for t in d_trades]), 2)
@@ -291,13 +287,11 @@ def statistics_page():
         week_stats['week_pl'] = round(week_stats['week_pl'], 2)
         calendar_data.append(week_stats)
 
-    # --- TOP WEEKS OF MONTH ANALYSIS ---
-    # Raggruppa tutti i trade storici per "Settimana del mese" (1,2,3,4,5)
+    # --- TOP WEEKS ANALYSIS ---
     week_performance = {1: {'wins':0, 'total':0, 'pl':0}, 2: {'wins':0, 'total':0, 'pl':0}, 
                         3: {'wins':0, 'total':0, 'pl':0}, 4: {'wins':0, 'total':0, 'pl':0}, 5: {'wins':0, 'total':0, 'pl':0}}
     
     for t in trades:
-        # Calcolo approssimativo settimana del mese: (giorno-1)//7 + 1
         w_num = (t.date.day - 1) // 7 + 1
         if w_num > 5: w_num = 5
         week_performance[w_num]['total'] += 1
@@ -313,7 +307,6 @@ def statistics_page():
     best_week = week_table[0]['name'] if week_table else "N/D"
 
     # --- TIMEFRAMES & ALIGNMENT ---
-    # Entry (Barrier)
     tf_stats = {}
     for t in active_trades:
         if t.timeframe:
@@ -329,7 +322,6 @@ def statistics_page():
         tf_table.append({'name': tf, 'total': data['total'], 'win_rate': wr, 'result': round(data['pl'], 2)})
     tf_table.sort(key=lambda x: x['result'], reverse=True)
 
-    # Alignment (Trend)
     align_stats = {}
     for t in active_trades:
         if t.alignment:
@@ -360,22 +352,20 @@ def statistics_page():
             day_table.append({'name': d, 'total': data['total'], 'win_rate': wr, 'res': round(data['res'], 2)})
     day_table.sort(key=lambda x: x['res'], reverse=True)
 
-    # --- MONTE CARLO SIMULATION (Backend) ---
-    # Genera 20 curve casuali basate sulla distribuzione dei ritorni attuali
+    # --- MONTE CARLO ---
     mc_simulations = []
     real_returns = [(t.result_percent or 0) for t in active_trades]
     if len(real_returns) > 5:
         for _ in range(20):
             sim_curve = []
             cum_pl = 0
-            # Simula tanti trade quanti ne ho fatti realmente
             shuffled = random.choices(real_returns, k=len(real_returns)) 
             for r in shuffled:
                 cum_pl += r
                 sim_curve.append(round(cum_pl, 2))
             mc_simulations.append(sim_curve)
     
-    # --- EQUITY & PROJECTION ---
+    # --- EQUITY ---
     chart_labels, chart_data = [], []
     run_tot = 0
     chronological = sorted(trades, key=lambda x: x.date)
@@ -385,12 +375,11 @@ def statistics_page():
             chart_labels.append(t.date.strftime('%d/%m'))
             chart_data.append(round(run_tot, 2))
     
-    # Proiezione Lineare (Expectancy * prossimi 20 trade)
     projection_data = []
     if total_active > 0:
         expectancy = (avg_win * (win_rate/100)) - (abs(avg_loss) * ((100-win_rate)/100))
         last_equity = chart_data[-1] if chart_data else 0
-        projection_data = [last_equity] # Start point
+        projection_data = [last_equity] 
         for i in range(1, 21):
             projection_data.append(round(last_equity + (expectancy * i), 2))
 
@@ -402,7 +391,8 @@ def statistics_page():
                            chart_labels=json.dumps(chart_labels), chart_data=json.dumps(chart_data),
                            mc_simulations=json.dumps(mc_simulations), projection_data=json.dumps(projection_data),
                            calendar_data=calendar_data, month_pl=month_pl,
-                           selected_month=selected_month_str, best_week=best_week)
+                           selected_month=selected_month_str, best_week=best_week, 
+                           total_days=total_days) # <-- Passo il nuovo parametro qui
 
 @app.route('/add_trade', methods=['POST'])
 @login_required
@@ -410,7 +400,6 @@ def add_trade():
     try:
         sc = ",".join([l for l in [request.form.get('link1','').strip(), request.form.get('link2','').strip()] if l])
         
-        # Gestione split timeframe
         barriers = ",".join(request.form.getlist('timeframe_barrier'))
         aligns = ",".join(request.form.getlist('timeframe_align'))
 
@@ -426,8 +415,8 @@ def add_trade():
             pips_tp=float(request.form.get('pips_tp') or 0),
             outcome=request.form.get('outcome'), 
             result_percent=float(request.form.get('result_percent') or 0),
-            timeframe=barriers, # Save barrier here
-            alignment=aligns,   # Save alignment here
+            timeframe=barriers, 
+            alignment=aligns,   
             selected_pros=",".join(request.form.getlist('pros')),
             selected_cons=",".join(request.form.getlist('cons')), 
             screen_pre=sc, 
