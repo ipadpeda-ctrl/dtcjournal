@@ -25,7 +25,7 @@ def add_header(response):
 
 # --- CONFIG ---
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'chiave-segreta-sviluppo-locale')
-ADMIN_USER = "matteo" 
+ADMIN_USER = "Matteo" 
 
 database_url = os.environ.get('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
