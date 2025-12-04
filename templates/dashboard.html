@@ -17,11 +17,13 @@
             </div>
             <div class="flex gap-2 items-center flex-wrap justify-end">
                 <button onclick="toggleDarkMode()" class="p-2 bg-gray-200 dark:bg-gray-700 rounded-full hover:bg-gray-300 transition">🌓</button>
+                
                 {% if admin_view %}
                 <a href="/admin_panel" class="bg-red-600 text-white py-2 px-4 rounded font-bold hover:bg-red-700 transition shadow">👮 Admin Panel</a>
                 {% endif %}
+
                 <a href="/rules" class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 py-2 px-4 rounded font-bold border border-yellow-300 dark:border-yellow-700 hover:opacity-80 transition">📜 Regole</a>
-                <a href="/settings" class="bg-gray-200 dark:bg-gray-700 py-2 px-4 rounded font-bold hover:bg-gray-300 transition"⚙️ Setup</a>
+                <a href="/settings" class="bg-gray-200 dark:bg-gray-700 py-2 px-4 rounded font-bold hover:bg-gray-300 transition">⚙️ Setup</a>
                 <a href="/statistics" class="bg-indigo-600 text-white py-2 px-4 rounded font-bold hover:bg-indigo-700 transition shadow-lg">📊 Stats</a>
                 <a href="/logout" class="bg-red-500 text-white py-2 px-4 rounded font-bold hover:bg-red-600 transition">Esci</a>
             </div>
@@ -207,19 +209,14 @@
                 const outcome = outcomeSelect.value;
                 let rr = parseFloat(rrInput.value) || 0;
 
-                // 1. Calcola RR se Pips SL > 0 e TP > 0
                 if (sl > 0 && tp > 0) {
                     rr = (tp / sl);
                     rrInput.value = rr.toFixed(2);
                 }
 
-                // 2. Calcola Risultato % basato su Esito
                 if (outcome === 'Stop Loss') {
-                    // Se SL -> Perdita pari al rischio (negativo)
                     if (risk > 0) resultInput.value = (-risk).toFixed(2);
                 } else if (outcome === 'Target') {
-                    // Se Target -> Rischio * RR
-                    // Usa l'rr calcolato se esiste, altrimenti quello nel campo input
                     const currentRR = rr > 0 ? rr : (parseFloat(rrInput.value) || 0);
                     if (risk > 0 && currentRR > 0) resultInput.value = (risk * currentRR).toFixed(2);
                 } else if (outcome === 'Breakeven') {
@@ -227,7 +224,6 @@
                 }
             }
 
-            // Event Listeners: ricalcola quando i dati cambiano
             [riskInput, rrInput, slInput, tpInput, outcomeSelect].forEach(el => {
                 if(el) el.addEventListener('input', calculateStats);
                 if(el) el.addEventListener('change', calculateStats);
