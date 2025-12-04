@@ -25,7 +25,7 @@ def add_header(response):
 
 # --- CONFIG ---
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'chiave-segreta-sviluppo-locale')
-ADMIN_USER = "Matteo" 
+ADMIN_USER = "matteo" 
 
 database_url = os.environ.get('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
@@ -268,10 +268,8 @@ def statistics_page():
     # --- RISK OF RUIN (Fixato) ---
     risk_of_ruin = {'10': 0, '20': 0, '100': 0}
     
-    # Abbassiamo la soglia minima a 5 trades per iniziare a calcolare qualcosa
     if total_active > 5:
         if gross_loss == 0:
-            # Se non ha mai perso, rischio rovina è tecnicamente 0
             risk_of_ruin = {'10': 0, '20': 0, '100': 0}
         else:
             win_prob = win_rate / 100
@@ -380,6 +378,19 @@ def statistics_page():
                 if t.outcome == 'Target': pros_stats[p]['wins'] += 1
     pros_table = make_stats_table(pros_stats)
 
+    # --- RISCHI (CONS) ANALYSIS - NUOVO ---
+    cons_stats = {}
+    for t in active_trades:
+        if t.selected_cons:
+            for c in t.selected_cons.split(','):
+                c = c.strip()
+                if not c: continue
+                if c not in cons_stats: cons_stats[c] = {'total': 0, 'wins': 0, 'pl': 0}
+                cons_stats[c]['total'] += 1
+                cons_stats[c]['pl'] += (t.result_percent or 0)
+                if t.outcome == 'Target': cons_stats[c]['wins'] += 1
+    cons_table = make_stats_table(cons_stats)
+
     # --- TOP DAYS ---
     day_map = {0: 'Lun', 1: 'Mar', 2: 'Mer', 3: 'Gio', 4: 'Ven', 5: 'Sab', 6: 'Dom'}
     day_stats = {d: {'wins': 0, 'total': 0, 'res': 0} for d in day_map.values()}
@@ -429,7 +440,8 @@ def statistics_page():
                            win_rate=win_rate, profit_factor=profit_factor, net_result=net_result, 
                            avg_weekly_trades=avg_weekly_trades, sharpe_ratio=sharpe_ratio, risk_of_ruin=risk_of_ruin,
                            total_active=total_active, total_trades=len(trades), num_wins=num_wins, num_losses=num_losses,
-                           tf_table=tf_table, align_table=align_table, day_table=day_table, week_table=week_table, pros_table=pros_table,
+                           tf_table=tf_table, align_table=align_table, day_table=day_table, week_table=week_table,
+                           pros_table=pros_table, cons_table=cons_table,
                            chart_labels=json.dumps(chart_labels), chart_data=json.dumps(chart_data),
                            mc_simulations=json.dumps(mc_simulations), projection_data=json.dumps(projection_data),
                            calendar_data=calendar_data, month_pl=month_pl,
