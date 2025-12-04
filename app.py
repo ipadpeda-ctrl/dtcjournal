@@ -3,10 +3,12 @@ from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
-from datetime import datetime
-from sqlalchemy import func
+from datetime import datetime, timedelta
+import calendar as cal_module
 import json
-import statistics 
+import statistics
+import random
+import math
 
 app = Flask(__name__)
 
@@ -59,11 +61,18 @@ class JournalEntry(db.Model):
     direction = db.Column(db.String(10)) 
     risk_percent = db.Column(db.Float)
     rr_final = db.Column(db.Float)
-    pips_tp = db.Column(db.Float)
-    pips_sl = db.Column(db.Float)
+    
+    # Nuovi campi richiesti
+    pips_tp = db.Column(db.Float, default=0)
+    pips_sl = db.Column(db.Float, default=0)
+    
     outcome = db.Column(db.String(20)) 
     result_percent = db.Column(db.Float) 
-    timeframe = db.Column(db.String(50)) 
+    
+    # Timeframe logic split
+    timeframe = db.Column(db.String(50)) # Barrier (Entry) M1-M30
+    alignment = db.Column(db.String(50)) # Alignment (Trend) H1-M
+    
     selected_pros = db.Column(db.Text) 
     selected_cons = db.Column(db.Text)
     setup = db.Column(db.String(50))
@@ -190,10 +199,16 @@ def statistics_page():
     if not admin_view:
         base_query = base_query.filter_by(user_id=current_user.id)
     
-    trades = base_query.order_by(JournalEntry.date.asc()).all()
-    if not trades: return render_template('statistics.html', no_data=True, user=current_user, admin_view=admin_view)
+    # Filtro opzionale mese per il calendario (default mese corrente se non specificato in url)
+    selected_month_str = request.args.get('month_ref', datetime.now().strftime('%Y-%m'))
+    sel_year, sel_month = map(int, selected_month_str.split('-'))
 
-    # 1. KPI BASE
+    trades = base_query.order_by(JournalEntry.date.asc()).all()
+    
+    if not trades: 
+        return render_template('statistics.html', no_data=True, user=current_user, admin_view=admin_view)
+
+    # --- BASE KPI ---
     active_trades = [t for t in trades if t.outcome in ['Target', 'Stop Loss', 'Breakeven']]
     wins = [(t.result_percent or 0) for t in active_trades if t.outcome == 'Target']
     losses = [(t.result_percent or 0) for t in active_trades if t.outcome == 'Stop Loss']
@@ -207,108 +222,130 @@ def statistics_page():
     gross_loss = abs(sum(losses))
     net_result = round(gross_profit - gross_loss, 2)
     profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else round(gross_profit, 2)
+    
+    # Average Weekly Trades
+    unique_weeks = len(set(t.date.strftime('%Y-%W') for t in trades))
+    avg_weekly_trades = round(len(trades) / unique_weeks, 1) if unique_weeks > 0 else len(trades)
 
-    unique_days = len(set(t.date.strftime('%Y-%m-%d') for t in trades))
-    avg_weekly_trades = 0
-    if trades:
-        delta = (trades[-1].date - trades[0].date).days
-        weeks = max(1, delta / 7)
-        avg_weekly_trades = round(len(trades) / weeks, 1)
-
+    # Sharpe Ratio & Expectancy
     returns = [(t.result_percent or 0) for t in active_trades]
-    std_dev = round(statistics.stdev(returns), 2) if len(returns) > 1 else 0
+    std_dev = statistics.stdev(returns) if len(returns) > 1 else 0
     avg_return = statistics.mean(returns) if returns else 0
     sharpe_ratio = round(avg_return / std_dev, 2) if std_dev > 0 else 0
     
     avg_win = round(statistics.mean(wins), 2) if wins else 0
     avg_loss = round(statistics.mean(losses), 2) if losses else 0
-    avg_rr_realized = round(avg_win / abs(avg_loss), 2) if avg_loss != 0 else 0
     
-    expectancy = 0
-    if total_active > 0:
-        win_rate_dec = num_wins / total_active
-        loss_rate_dec = num_losses / total_active
-        expectancy = round((win_rate_dec * avg_win) - (loss_rate_dec * abs(avg_loss)), 2)
+    # Risk of Ruin Logic (Simulata semplificata)
+    # Probabilità di toccare -10%, -20%, -100% dato il WR e Payoff
+    risk_of_ruin = {'10': 0, '20': 0, '100': 0}
+    if total_active > 10 and gross_loss > 0:
+        # Modello semplice basato su formula RoR
+        win_prob = win_rate / 100
+        loss_prob = 1 - win_prob
+        payoff = abs(avg_win / avg_loss) if avg_loss != 0 else 1
+        # Formula approssimativa RoR = ((1 - WR) / (1 + WR))^Units
+        # Qui usiamo una stima basata su 1000 iterazioni Montecarlo per calcolare il drawdown
+        mc_drawdowns = []
+        for _ in range(500):
+            sim_equity = 0
+            max_dd = 0
+            peak = 0
+            # Simula 100 trade futuri
+            for _ in range(100):
+                outcome = random.choices([avg_win, avg_loss], weights=[win_prob, loss_prob])[0]
+                sim_equity += outcome
+                peak = max(peak, sim_equity)
+                dd = peak - sim_equity
+                max_dd = max(max_dd, dd)
+            mc_drawdowns.append(max_dd)
+        
+        risk_of_ruin['10'] = round(len([d for d in mc_drawdowns if d >= 10]) / 500 * 100, 1)
+        risk_of_ruin['20'] = round(len([d for d in mc_drawdowns if d >= 20]) / 500 * 100, 1)
+        risk_of_ruin['100'] = round(len([d for d in mc_drawdowns if d >= 100]) / 500 * 100, 1)
 
-    # 4. TABELLA EMOZIONI
-    emo_stats = {}
+    # --- CALENDAR TOPSTEP STYLE ---
+    # 1. Trova i trade del mese selezionato
+    month_trades = [t for t in trades if t.date.year == sel_year and t.date.month == sel_month]
+    month_pl = sum([(t.result_percent or 0) for t in month_trades])
+    
+    # 2. Costruisci griglia calendario
+    cal_obj = cal_module.Calendar(firstweekday=6) # 0=Lun, 6=Dom. Topstep usa Dom come inizio riga solitamente, o Lun. Mettiamo Domenica start
+    month_days = cal_obj.monthdayscalendar(sel_year, sel_month)
+    
+    calendar_data = []
+    # Struttura: [ { 'week_num': 1, 'days': [ {day:1, pl: 10, count:2}, ... ], 'week_pl': 100 }, ... ]
+    
+    for week in month_days:
+        week_stats = {'days': [], 'week_pl': 0, 'trade_count': 0}
+        for day in week:
+            if day == 0:
+                week_stats['days'].append(None) # Cella vuota
+            else:
+                d_trades = [t for t in month_trades if t.date.day == day]
+                d_pl = round(sum([(t.result_percent or 0) for t in d_trades]), 2)
+                d_count = len(d_trades)
+                week_stats['days'].append({'day': day, 'pl': d_pl, 'count': d_count})
+                week_stats['week_pl'] += d_pl
+                week_stats['trade_count'] += d_count
+        week_stats['week_pl'] = round(week_stats['week_pl'], 2)
+        calendar_data.append(week_stats)
+
+    # --- TOP WEEKS OF MONTH ANALYSIS ---
+    # Raggruppa tutti i trade storici per "Settimana del mese" (1,2,3,4,5)
+    week_performance = {1: {'wins':0, 'total':0, 'pl':0}, 2: {'wins':0, 'total':0, 'pl':0}, 
+                        3: {'wins':0, 'total':0, 'pl':0}, 4: {'wins':0, 'total':0, 'pl':0}, 5: {'wins':0, 'total':0, 'pl':0}}
+    
     for t in trades:
-        emo = t.emotions if t.emotions else "Nessuna"
-        if emo not in emo_stats: emo_stats[emo] = {'total':0, 'wins':0, 'res':0}
-        emo_stats[emo]['total'] += 1
-        emo_stats[emo]['res'] += (t.result_percent or 0)
-        if t.outcome == 'Target': emo_stats[emo]['wins'] += 1
-    
-    emo_table = []
-    for emo, data in emo_stats.items():
-        wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
-        emo_table.append({'name': emo, 'total': data['total'], 'win_rate': wr, 'result': round(data['res'], 2)})
-    emo_table.sort(key=lambda x: x['result'], reverse=True)
+        # Calcolo approssimativo settimana del mese: (giorno-1)//7 + 1
+        w_num = (t.date.day - 1) // 7 + 1
+        if w_num > 5: w_num = 5
+        week_performance[w_num]['total'] += 1
+        week_performance[w_num]['pl'] += (t.result_percent or 0)
+        if t.outcome == 'Target': week_performance[w_num]['wins'] += 1
+        
+    week_table = []
+    for w, data in week_performance.items():
+        if data['total'] > 0:
+            wr = round(data['wins']/data['total']*100, 1)
+            week_table.append({'name': f"Settimana {w}", 'win_rate': wr, 'pl': round(data['pl'], 2), 'total': data['total']})
+    week_table.sort(key=lambda x: x['pl'], reverse=True)
+    best_week = week_table[0]['name'] if week_table else "N/D"
 
-    # 5. CONFLUENZE
-    tag_stats = {} 
-    for t in active_trades:
-        tags = []
-        if t.selected_pros: tags.extend([p.strip() for p in t.selected_pros.split(',') if p.strip()])
-        if t.selected_cons: tags.extend([c.strip() for c in t.selected_cons.split(',') if c.strip()])
-        for tag in tags:
-            if tag not in tag_stats: tag_stats[tag] = {'total':0, 'wins':0, 'loss':0, 'be':0}
-            tag_stats[tag]['total'] += 1
-            if t.outcome == 'Target': tag_stats[tag]['wins'] += 1
-            elif t.outcome == 'Stop Loss': tag_stats[tag]['loss'] += 1
-            elif t.outcome == 'Breakeven': tag_stats[tag]['be'] += 1
-
-    confluence_table = []
-    for tag, data in tag_stats.items():
-        wr = round(data['wins']/data['total']*100, 1) if data['total']>0 else 0
-        confluence_table.append({'name': tag, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr})
-    confluence_table.sort(key=lambda x: x['total'], reverse=True)
-
-    # 6. TIMEFRAME (FIXED LOGIC: Uses active_trades for accuracy)
+    # --- TIMEFRAMES & ALIGNMENT ---
+    # Entry (Barrier)
     tf_stats = {}
     for t in active_trades:
         if t.timeframe:
             for tf in t.timeframe.split(','):
                 tf = tf.strip()
-                if tf not in tf_stats: tf_stats[tf] = {'total': 0, 'wins': 0, 'loss': 0, 'be': 0, 'result': 0.0}
+                if tf not in tf_stats: tf_stats[tf] = {'total': 0, 'wins': 0, 'pl': 0}
                 tf_stats[tf]['total'] += 1
-                tf_stats[tf]['result'] += (t.result_percent or 0)
+                tf_stats[tf]['pl'] += (t.result_percent or 0)
                 if t.outcome == 'Target': tf_stats[tf]['wins'] += 1
-                elif t.outcome == 'Stop Loss': tf_stats[tf]['loss'] += 1
-                elif t.outcome == 'Breakeven': tf_stats[tf]['be'] += 1
-    
     tf_table = []
     for tf, data in tf_stats.items():
         wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
-        tf_table.append({'name': tf, 'total': data['total'], 'wins': data['wins'], 'loss': data['loss'], 'be': data['be'], 'win_rate': wr, 'result': round(data['result'], 2)})
-    tf_table.sort(key=lambda x: x['total'], reverse=True)
+        tf_table.append({'name': tf, 'total': data['total'], 'win_rate': wr, 'result': round(data['pl'], 2)})
+    tf_table.sort(key=lambda x: x['result'], reverse=True)
 
-    # 7. LONG/SHORT
-    ls_stats = {'Long': {'total':0, 'wins':0, 'res':0}, 'Short': {'total':0, 'wins':0, 'res':0}}
-    for t in trades:
-        if t.direction in ls_stats:
-            ls_stats[t.direction]['total'] += 1
-            ls_stats[t.direction]['res'] += (t.result_percent or 0)
-            if t.outcome == 'Target': ls_stats[t.direction]['wins'] += 1
-    long_wr = round(ls_stats['Long']['wins']/ls_stats['Long']['total']*100, 1) if ls_stats['Long']['total'] > 0 else 0
-    short_wr = round(ls_stats['Short']['wins']/ls_stats['Short']['total']*100, 1) if ls_stats['Short']['total'] > 0 else 0
-
-    # 8. ASSETS
-    asset_stats = {}
-    for t in trades:
-        if t.pair not in asset_stats: asset_stats[t.pair] = {'total':0, 'wins':0, 'res':0}
-        asset_stats[t.pair]['total'] += 1
-        asset_stats[t.pair]['res'] += (t.result_percent or 0)
-        if t.outcome == 'Target': asset_stats[t.pair]['wins'] += 1
-    asset_table = []
-    for pair, data in asset_stats.items():
+    # Alignment (Trend)
+    align_stats = {}
+    for t in active_trades:
+        if t.alignment:
+            for al in t.alignment.split(','):
+                al = al.strip()
+                if al not in align_stats: align_stats[al] = {'total': 0, 'wins': 0, 'pl': 0}
+                align_stats[al]['total'] += 1
+                align_stats[al]['pl'] += (t.result_percent or 0)
+                if t.outcome == 'Target': align_stats[al]['wins'] += 1
+    align_table = []
+    for al, data in align_stats.items():
         wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
-        asset_table.append({'name': pair, 'total': data['total'], 'win_rate': wr, 'res': round(data['res'], 2)})
-    asset_table.sort(key=lambda x: x['res'], reverse=True)
-    asset_best = asset_table[0]['name'] if asset_table else "N/D"
-    asset_worst = asset_table[-1]['name'] if asset_table else "N/D"
+        align_table.append({'name': al, 'total': data['total'], 'win_rate': wr, 'result': round(data['pl'], 2)})
+    align_table.sort(key=lambda x: x['result'], reverse=True)
 
-    # 9. GIORNI
+    # --- TOP DAYS ---
     day_map = {0: 'Lun', 1: 'Mar', 2: 'Mer', 3: 'Gio', 4: 'Ven', 5: 'Sab', 6: 'Dom'}
     day_stats = {d: {'wins': 0, 'total': 0, 'res': 0} for d in day_map.values()}
     for t in trades:
@@ -322,32 +359,23 @@ def statistics_page():
             wr = round(data['wins']/data['total']*100, 1)
             day_table.append({'name': d, 'total': data['total'], 'win_rate': wr, 'res': round(data['res'], 2)})
     day_table.sort(key=lambda x: x['res'], reverse=True)
-    best_day = day_table[0]['name'] if day_table else "N/D"
 
-    # AI INSIGHTS
-    ai_qa = []
-    perf_status = "Eccellente" if win_rate > 60 and profit_factor > 1.5 else "Buona" if win_rate > 40 else "In difficoltà"
-    ai_qa.append({'q': "Come sto andando in generale?", 'a': f"Performance **{perf_status}**. Win Rate: {win_rate}%, PF: {profit_factor}, R:R Medio: 1:{avg_rr_realized}."})
-    best_tf = tf_table[0]['name'] if tf_table else "N/D"
-    ai_qa.append({'q': "Quali sono i miei punti di forza?", 'a': f"Miglior giorno: **{best_day}**. Miglior TF: **{best_tf}**. Miglior asset: **{asset_best}**."})
-    worst_emo = emo_table[-1]['name'] if emo_table and emo_table[-1]['result'] < 0 else "Nessuna"
-    ai_qa.append({'q': "Dove sto perdendo soldi?", 'a': f"Asset peggiore: **{asset_worst}**. Emozione critica: **'{worst_emo}'**."})
-    risk_advice = "Stabile" if avg_loss > -1.5 else "Troppo aggressiva (> 1.5%)"
-    ai_qa.append({'q': "Gestione del rischio?", 'a': f"Perdita media: {avg_loss}%. Valutazione: **{risk_advice}**."})
-
-    hourly_dist = {h: {'Target': 0, 'Stop Loss': 0, 'Breakeven': 0} for h in range(24)}
-    for t in active_trades:
-        if t.time:
-            try:
-                h = int(t.time.split(':')[0])
-                if t.outcome in ['Target', 'Stop Loss', 'Breakeven']: hourly_dist[h][t.outcome] += 1
-            except: pass
+    # --- MONTE CARLO SIMULATION (Backend) ---
+    # Genera 20 curve casuali basate sulla distribuzione dei ritorni attuali
+    mc_simulations = []
+    real_returns = [(t.result_percent or 0) for t in active_trades]
+    if len(real_returns) > 5:
+        for _ in range(20):
+            sim_curve = []
+            cum_pl = 0
+            # Simula tanti trade quanti ne ho fatti realmente
+            shuffled = random.choices(real_returns, k=len(real_returns)) 
+            for r in shuffled:
+                cum_pl += r
+                sim_curve.append(round(cum_pl, 2))
+            mc_simulations.append(sim_curve)
     
-    hours_labels = [f"{h:02d}:00" for h in range(24)]
-    data_target = [hourly_dist[h]['Target'] for h in range(24)]
-    data_stop = [hourly_dist[h]['Stop Loss'] for h in range(24)]
-    data_be = [hourly_dist[h]['Breakeven'] for h in range(24)]
-
+    # --- EQUITY & PROJECTION ---
     chart_labels, chart_data = [], []
     run_tot = 0
     chronological = sorted(trades, key=lambda x: x.date)
@@ -356,29 +384,55 @@ def statistics_page():
             run_tot += t.result_percent
             chart_labels.append(t.date.strftime('%d/%m'))
             chart_data.append(round(run_tot, 2))
+    
+    # Proiezione Lineare (Expectancy * prossimi 20 trade)
+    projection_data = []
+    if total_active > 0:
+        expectancy = (avg_win * (win_rate/100)) - (abs(avg_loss) * ((100-win_rate)/100))
+        last_equity = chart_data[-1] if chart_data else 0
+        projection_data = [last_equity] # Start point
+        for i in range(1, 21):
+            projection_data.append(round(last_equity + (expectancy * i), 2))
 
     return render_template('statistics.html', no_data=False, user=current_user, admin_view=admin_view,
-                           win_rate=win_rate, profit_factor=profit_factor, net_result=net_result, expectancy=expectancy,
-                           unique_days=unique_days, avg_weekly_trades=avg_weekly_trades, std_dev=std_dev, sharpe_ratio=sharpe_ratio, avg_rr_realized=avg_rr_realized,
-                           total_active=total_active, total_trades=len(trades), num_wins=num_wins, num_losses=num_losses, num_non_fill=len([t for t in trades if t.outcome=='Non Fillato']), num_setup=len([t for t in trades if t.outcome=='Setup']),
-                           confluence_table=confluence_table, emo_table=emo_table, ai_qa=ai_qa, asset_table=asset_table,
-                           ls_stats=ls_stats, long_wr=long_wr, short_wr=short_wr, day_table=day_table, tf_table=tf_table,
+                           win_rate=win_rate, profit_factor=profit_factor, net_result=net_result, 
+                           avg_weekly_trades=avg_weekly_trades, sharpe_ratio=sharpe_ratio, risk_of_ruin=risk_of_ruin,
+                           total_active=total_active, total_trades=len(trades), num_wins=num_wins, num_losses=num_losses,
+                           tf_table=tf_table, align_table=align_table, day_table=day_table, week_table=week_table,
                            chart_labels=json.dumps(chart_labels), chart_data=json.dumps(chart_data),
-                           hours_labels=json.dumps(hours_labels), 
-                           data_target=json.dumps(data_target), data_stop=json.dumps(data_stop), data_be=json.dumps(data_be))
+                           mc_simulations=json.dumps(mc_simulations), projection_data=json.dumps(projection_data),
+                           calendar_data=calendar_data, month_pl=month_pl,
+                           selected_month=selected_month_str, best_week=best_week)
 
 @app.route('/add_trade', methods=['POST'])
 @login_required
 def add_trade():
     try:
         sc = ",".join([l for l in [request.form.get('link1','').strip(), request.form.get('link2','').strip()] if l])
+        
+        # Gestione split timeframe
+        barriers = ",".join(request.form.getlist('timeframe_barrier'))
+        aligns = ",".join(request.form.getlist('timeframe_align'))
+
         new_entry = JournalEntry(
-            user_id=current_user.id, pair=request.form.get('pair'), date=datetime.strptime(request.form.get('date'), '%Y-%m-%d'),
-            time=request.form.get('time'), direction=request.form.get('direction'),
-            risk_percent=float(request.form.get('risk_percent') or 0), rr_final=float(request.form.get('rr_final') or 0),
-            outcome=request.form.get('outcome'), result_percent=float(request.form.get('result_percent') or 0),
-            timeframe=",".join(request.form.getlist('timeframe')), selected_pros=",".join(request.form.getlist('pros')),
-            selected_cons=",".join(request.form.getlist('cons')), screen_pre=sc, emotions=request.form.get('emotions'), notes=request.form.get('notes')
+            user_id=current_user.id, 
+            pair=request.form.get('pair'), 
+            date=datetime.strptime(request.form.get('date'), '%Y-%m-%d'),
+            time=request.form.get('time'), 
+            direction=request.form.get('direction'),
+            risk_percent=float(request.form.get('risk_percent') or 0), 
+            rr_final=float(request.form.get('rr_final') or 0),
+            pips_sl=float(request.form.get('pips_sl') or 0),
+            pips_tp=float(request.form.get('pips_tp') or 0),
+            outcome=request.form.get('outcome'), 
+            result_percent=float(request.form.get('result_percent') or 0),
+            timeframe=barriers, # Save barrier here
+            alignment=aligns,   # Save alignment here
+            selected_pros=",".join(request.form.getlist('pros')),
+            selected_cons=",".join(request.form.getlist('cons')), 
+            screen_pre=sc, 
+            emotions=request.form.get('emotions'), 
+            notes=request.form.get('notes')
         )
         db.session.add(new_entry)
         db.session.commit()
@@ -410,9 +464,14 @@ def edit_trade(id):
         trade.risk_percent = float(request.form.get('risk_percent') or 0)
         trade.result_percent = float(request.form.get('result_percent') or 0)
         trade.rr_final = float(request.form.get('rr_final') or 0)
+        trade.pips_sl = float(request.form.get('pips_sl') or 0)
+        trade.pips_tp = float(request.form.get('pips_tp') or 0)
         trade.emotions = request.form.get('emotions')
         trade.notes = request.form.get('notes')
-        trade.timeframe = ",".join(request.form.getlist('timeframe'))
+        
+        trade.timeframe = ",".join(request.form.getlist('timeframe_barrier'))
+        trade.alignment = ",".join(request.form.getlist('timeframe_align'))
+        
         trade.selected_pros = ",".join(request.form.getlist('pros'))
         trade.selected_cons = ",".join(request.form.getlist('cons'))
         trade.screen_pre = ",".join([l for l in [request.form.get('link1','').strip(), request.form.get('link2','').strip()] if l])
@@ -420,7 +479,9 @@ def edit_trade(id):
         flash('Modificato!', 'success')
         return redirect(url_for('dashboard'))
     
-    curr_tfs = trade.timeframe.split(',') if trade.timeframe else []
+    curr_barriers = trade.timeframe.split(',') if trade.timeframe else []
+    curr_aligns = trade.alignment.split(',') if trade.alignment else []
+    
     curr_pros = trade.selected_pros.split(',') if trade.selected_pros else []
     curr_cons = trade.selected_cons.split(',') if trade.selected_cons else []
     cur_lnks = trade.screen_pre.split(',') if trade.screen_pre else []
@@ -428,7 +489,9 @@ def edit_trade(id):
     u_cons = [c for c in (current_user.cons_settings.split(',') if current_user.cons_settings else []) if c]
     custom_pairs_list = [p.strip().upper() for p in (current_user.custom_pairs.split(',') if current_user.custom_pairs else []) if p.strip()]
 
-    return render_template('edit_trade.html', trade=trade, curr_tfs=curr_tfs, curr_pros=curr_pros, curr_cons=curr_cons, 
+    return render_template('edit_trade.html', trade=trade, 
+                           curr_barriers=curr_barriers, curr_aligns=curr_aligns,
+                           curr_pros=curr_pros, curr_cons=curr_cons, 
                            user_pros_list=u_pros, user_cons_list=u_cons, custom_pairs=custom_pairs_list,
                            val_link1=cur_lnks[0] if len(cur_lnks)>0 else '', val_link2=cur_lnks[1] if len(cur_lnks)>1 else '')
 
