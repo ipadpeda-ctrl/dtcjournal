@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
@@ -151,6 +151,34 @@ def rules():
         return redirect(url_for('rules'))
     return render_template('rules.html', user=current_user)
 
+@app.route('/admin_panel', methods=['GET', 'POST'])
+@login_required
+def admin_panel():
+    if current_user.role != 'admin':
+        abort(403)
+        
+    if request.method == 'POST':
+        target_username = request.form.get('target_username')
+        action = request.form.get('action')
+        
+        user_to_mod = User.query.filter_by(username=target_username).first()
+        
+        if not user_to_mod:
+            flash(f'Utente "{target_username}" non trovato.', 'danger')
+        elif user_to_mod.username == ADMIN_USER:
+             flash('Impossibile modificare il Super Admin.', 'danger')
+        else:
+            if action == 'promote':
+                user_to_mod.role = 'admin'
+                flash(f'{target_username} è ora ADMIN.', 'success')
+            elif action == 'demote':
+                user_to_mod.role = 'student'
+                flash(f'{target_username} è ora studente.', 'warning')
+            db.session.commit()
+            
+    users = User.query.all()
+    return render_template('admin_users.html', users=users, super_admin=ADMIN_USER, user=current_user)
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -199,14 +227,12 @@ def statistics_page():
     if not admin_view:
         base_query = base_query.filter_by(user_id=current_user.id)
     
-    # Filtro opzionale mese per il calendario (default mese corrente se non specificato in url)
+    # Filtro opzionale mese per il calendario
     selected_month_str = request.args.get('month_ref', datetime.now().strftime('%Y-%m'))
     sel_year, sel_month = map(int, selected_month_str.split('-'))
 
     trades = base_query.order_by(JournalEntry.date.asc()).all()
     
-    # --- CALCOLO GIORNI OPERATIVI (Nuovo) ---
-    # Usiamo un set per contare le date uniche
     unique_dates = set(t.date for t in trades)
     total_days = len(unique_dates)
 
@@ -228,11 +254,9 @@ def statistics_page():
     net_result = round(gross_profit - gross_loss, 2)
     profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else round(gross_profit, 2)
     
-    # Average Weekly Trades
     unique_weeks = len(set(t.date.strftime('%Y-%W') for t in trades))
     avg_weekly_trades = round(len(trades) / unique_weeks, 1) if unique_weeks > 0 else len(trades)
 
-    # Sharpe Ratio & Expectancy
     returns = [(t.result_percent or 0) for t in active_trades]
     std_dev = statistics.stdev(returns) if len(returns) > 1 else 0
     avg_return = statistics.mean(returns) if returns else 0
@@ -241,28 +265,34 @@ def statistics_page():
     avg_win = round(statistics.mean(wins), 2) if wins else 0
     avg_loss = round(statistics.mean(losses), 2) if losses else 0
     
-    # Risk of Ruin Logic (Simulata semplificata)
+    # --- RISK OF RUIN (Fixato) ---
     risk_of_ruin = {'10': 0, '20': 0, '100': 0}
-    if total_active > 10 and gross_loss > 0:
-        win_prob = win_rate / 100
-        loss_prob = 1 - win_prob
-        
-        mc_drawdowns = []
-        for _ in range(500):
-            sim_equity = 0
-            max_dd = 0
-            peak = 0
-            for _ in range(100):
-                outcome = random.choices([avg_win, avg_loss], weights=[win_prob, loss_prob])[0]
-                sim_equity += outcome
-                peak = max(peak, sim_equity)
-                dd = peak - sim_equity
-                max_dd = max(max_dd, dd)
-            mc_drawdowns.append(max_dd)
-        
-        risk_of_ruin['10'] = round(len([d for d in mc_drawdowns if d >= 10]) / 500 * 100, 1)
-        risk_of_ruin['20'] = round(len([d for d in mc_drawdowns if d >= 20]) / 500 * 100, 1)
-        risk_of_ruin['100'] = round(len([d for d in mc_drawdowns if d >= 100]) / 500 * 100, 1)
+    
+    # Abbassiamo la soglia minima a 5 trades per iniziare a calcolare qualcosa
+    if total_active > 5:
+        if gross_loss == 0:
+            # Se non ha mai perso, rischio rovina è tecnicamente 0
+            risk_of_ruin = {'10': 0, '20': 0, '100': 0}
+        else:
+            win_prob = win_rate / 100
+            loss_prob = 1 - win_prob
+            
+            mc_drawdowns = []
+            for _ in range(1000): # Aumentato numero simulazioni
+                sim_equity = 0
+                max_dd = 0
+                peak = 0
+                for _ in range(100):
+                    outcome = random.choices([avg_win, avg_loss], weights=[win_prob, loss_prob])[0]
+                    sim_equity += outcome
+                    peak = max(peak, sim_equity)
+                    dd = peak - sim_equity
+                    max_dd = max(max_dd, dd)
+                mc_drawdowns.append(max_dd)
+            
+            risk_of_ruin['10'] = round(len([d for d in mc_drawdowns if d >= 10]) / 1000 * 100, 1)
+            risk_of_ruin['20'] = round(len([d for d in mc_drawdowns if d >= 20]) / 1000 * 100, 1)
+            risk_of_ruin['100'] = round(len([d for d in mc_drawdowns if d >= 100]) / 1000 * 100, 1)
 
     # --- CALENDAR TOPSTEP STYLE ---
     month_trades = [t for t in trades if t.date.year == sel_year and t.date.month == sel_month]
@@ -290,14 +320,12 @@ def statistics_page():
     # --- TOP WEEKS ANALYSIS ---
     week_performance = {1: {'wins':0, 'total':0, 'pl':0}, 2: {'wins':0, 'total':0, 'pl':0}, 
                         3: {'wins':0, 'total':0, 'pl':0}, 4: {'wins':0, 'total':0, 'pl':0}, 5: {'wins':0, 'total':0, 'pl':0}}
-    
     for t in trades:
         w_num = (t.date.day - 1) // 7 + 1
         if w_num > 5: w_num = 5
         week_performance[w_num]['total'] += 1
         week_performance[w_num]['pl'] += (t.result_percent or 0)
         if t.outcome == 'Target': week_performance[w_num]['wins'] += 1
-        
     week_table = []
     for w, data in week_performance.items():
         if data['total'] > 0:
@@ -306,7 +334,16 @@ def statistics_page():
     week_table.sort(key=lambda x: x['pl'], reverse=True)
     best_week = week_table[0]['name'] if week_table else "N/D"
 
-    # --- TIMEFRAMES & ALIGNMENT ---
+    # --- HELPER PER TABELLE ---
+    def make_stats_table(stats_dict):
+        table = []
+        for key, data in stats_dict.items():
+            wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
+            table.append({'name': key, 'total': data['total'], 'win_rate': wr, 'result': round(data['pl'], 2)})
+        table.sort(key=lambda x: x['result'], reverse=True)
+        return table
+
+    # --- TIMEFRAMES ---
     tf_stats = {}
     for t in active_trades:
         if t.timeframe:
@@ -316,12 +353,9 @@ def statistics_page():
                 tf_stats[tf]['total'] += 1
                 tf_stats[tf]['pl'] += (t.result_percent or 0)
                 if t.outcome == 'Target': tf_stats[tf]['wins'] += 1
-    tf_table = []
-    for tf, data in tf_stats.items():
-        wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
-        tf_table.append({'name': tf, 'total': data['total'], 'win_rate': wr, 'result': round(data['pl'], 2)})
-    tf_table.sort(key=lambda x: x['result'], reverse=True)
+    tf_table = make_stats_table(tf_stats)
 
+    # --- ALIGNMENT ---
     align_stats = {}
     for t in active_trades:
         if t.alignment:
@@ -331,11 +365,20 @@ def statistics_page():
                 align_stats[al]['total'] += 1
                 align_stats[al]['pl'] += (t.result_percent or 0)
                 if t.outcome == 'Target': align_stats[al]['wins'] += 1
-    align_table = []
-    for al, data in align_stats.items():
-        wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
-        align_table.append({'name': al, 'total': data['total'], 'win_rate': wr, 'result': round(data['pl'], 2)})
-    align_table.sort(key=lambda x: x['result'], reverse=True)
+    align_table = make_stats_table(align_stats)
+
+    # --- CONFLUENZE (PROS) ANALYSIS ---
+    pros_stats = {}
+    for t in active_trades:
+        if t.selected_pros:
+            for p in t.selected_pros.split(','):
+                p = p.strip()
+                if not p: continue
+                if p not in pros_stats: pros_stats[p] = {'total': 0, 'wins': 0, 'pl': 0}
+                pros_stats[p]['total'] += 1
+                pros_stats[p]['pl'] += (t.result_percent or 0)
+                if t.outcome == 'Target': pros_stats[p]['wins'] += 1
+    pros_table = make_stats_table(pros_stats)
 
     # --- TOP DAYS ---
     day_map = {0: 'Lun', 1: 'Mar', 2: 'Mer', 3: 'Gio', 4: 'Ven', 5: 'Sab', 6: 'Dom'}
@@ -352,7 +395,7 @@ def statistics_page():
             day_table.append({'name': d, 'total': data['total'], 'win_rate': wr, 'res': round(data['res'], 2)})
     day_table.sort(key=lambda x: x['res'], reverse=True)
 
-    # --- MONTE CARLO ---
+    # --- CHART & MONTE CARLO ---
     mc_simulations = []
     real_returns = [(t.result_percent or 0) for t in active_trades]
     if len(real_returns) > 5:
@@ -365,7 +408,6 @@ def statistics_page():
                 sim_curve.append(round(cum_pl, 2))
             mc_simulations.append(sim_curve)
     
-    # --- EQUITY ---
     chart_labels, chart_data = [], []
     run_tot = 0
     chronological = sorted(trades, key=lambda x: x.date)
@@ -387,12 +429,12 @@ def statistics_page():
                            win_rate=win_rate, profit_factor=profit_factor, net_result=net_result, 
                            avg_weekly_trades=avg_weekly_trades, sharpe_ratio=sharpe_ratio, risk_of_ruin=risk_of_ruin,
                            total_active=total_active, total_trades=len(trades), num_wins=num_wins, num_losses=num_losses,
-                           tf_table=tf_table, align_table=align_table, day_table=day_table, week_table=week_table,
+                           tf_table=tf_table, align_table=align_table, day_table=day_table, week_table=week_table, pros_table=pros_table,
                            chart_labels=json.dumps(chart_labels), chart_data=json.dumps(chart_data),
                            mc_simulations=json.dumps(mc_simulations), projection_data=json.dumps(projection_data),
                            calendar_data=calendar_data, month_pl=month_pl,
                            selected_month=selected_month_str, best_week=best_week, 
-                           total_days=total_days) # <-- Passo il nuovo parametro qui
+                           total_days=total_days)
 
 @app.route('/add_trade', methods=['POST'])
 @login_required
