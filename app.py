@@ -257,6 +257,9 @@ def statistics_page():
     unique_weeks = len(set(t.date.strftime('%Y-%W') for t in trades))
     avg_weekly_trades = round(len(trades) / unique_weeks, 1) if unique_weeks > 0 else len(trades)
 
+    # --- NUOVA METRICA RICHIESTA: TRADES / GIORNO OPERATIVO ---
+    avg_daily_trades = round(len(trades) / total_days, 1) if total_days > 0 else 0
+
     returns = [(t.result_percent or 0) for t in active_trades]
     std_dev = statistics.stdev(returns) if len(returns) > 1 else 0
     avg_return = statistics.mean(returns) if returns else 0
@@ -352,7 +355,6 @@ def statistics_page():
         table = []
         for key, data in stats_dict.items():
             wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
-            # Aggiungo il campo 'type' se presente nel dizionario, altrimenti None
             row_type = data.get('type', None)
             table.append({'name': key, 'total': data['total'], 'win_rate': wr, 'result': round(data['pl'], 2), 'type': row_type})
         table.sort(key=lambda x: x['result'], reverse=True)
@@ -402,7 +404,6 @@ def statistics_page():
             for c in t.selected_cons.split(','):
                 c = c.strip()
                 if not c: continue
-                # Se per caso un nome esiste sia in pro che contro (raro), appendiamo (Rischio) al nome
                 key = c
                 if key in confluences_stats and confluences_stats[key]['type'] == 'Pro':
                     key = c + " (Rischio)"
@@ -473,11 +474,11 @@ def statistics_page():
     return render_template('statistics.html', no_data=False, user=current_user, admin_view=admin_view,
                            win_rate=win_rate, profit_factor=profit_factor, net_result=net_result, 
                            avg_weekly_trades=avg_weekly_trades, sharpe_ratio=sharpe_ratio, risk_of_ruin=risk_of_ruin,
-                           avg_win_rr=avg_win_rr, # Passato al template
-                           long_stats=long_stats, short_stats=short_stats, # Dati grafico torta
+                           avg_win_rr=avg_win_rr, avg_daily_trades=avg_daily_trades, # Passato al template
+                           long_stats=long_stats, short_stats=short_stats, 
                            total_active=total_active, total_trades=len(trades), num_wins=num_wins, num_losses=num_losses,
                            tf_table=tf_table, align_table=align_table, day_table=day_table, week_table=week_table,
-                           confluences_table=confluences_table, emotions_table=emotions_table, # Nuove tabelle
+                           confluences_table=confluences_table, emotions_table=emotions_table, 
                            chart_labels=json.dumps(chart_labels), chart_data=json.dumps(chart_data),
                            mc_simulations=json.dumps(mc_simulations), projection_data=json.dumps(projection_data),
                            calendar_data=calendar_data, month_pl=month_pl,
