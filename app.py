@@ -62,14 +62,12 @@ class JournalEntry(db.Model):
     risk_percent = db.Column(db.Float)
     rr_final = db.Column(db.Float)
     
-    # Nuovi campi richiesti
     pips_tp = db.Column(db.Float, default=0)
     pips_sl = db.Column(db.Float, default=0)
     
     outcome = db.Column(db.String(20)) 
     result_percent = db.Column(db.Float) 
     
-    # Timeframe logic split
     timeframe = db.Column(db.String(50)) # Barrier (Entry) M1-M30
     alignment = db.Column(db.String(50)) # Alignment (Trend) H1-M
     
@@ -124,11 +122,10 @@ def logout():
 @app.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
+    # Modificato: Rimosso salvataggio rules/risk da qui per evitare duplicati
     if request.method == 'POST':
         current_user.pros_settings = ",".join([p.strip() for p in request.form.getlist('pros_item') if p.strip()])
         current_user.cons_settings = ",".join([c.strip() for c in request.form.getlist('cons_item') if c.strip()])
-        current_user.trading_rules = request.form.get('trading_rules')
-        current_user.risk_rules = request.form.get('risk_rules')
         current_user.custom_pairs = request.form.get('custom_pairs')
         db.session.commit()
         flash('Setup aggiornato!', 'success')
@@ -227,7 +224,6 @@ def statistics_page():
     if not admin_view:
         base_query = base_query.filter_by(user_id=current_user.id)
     
-    # Filtro opzionale mese per il calendario
     selected_month_str = request.args.get('month_ref', datetime.now().strftime('%Y-%m'))
     sel_year, sel_month = map(int, selected_month_str.split('-'))
 
@@ -254,6 +250,10 @@ def statistics_page():
     net_result = round(gross_profit - gross_loss, 2)
     profit_factor = round(gross_profit / gross_loss, 2) if gross_loss > 0 else round(gross_profit, 2)
     
+    # --- AVG RR (SOLO SU WINNING TRADES) ---
+    win_rr_vals = [t.rr_final for t in active_trades if t.outcome == 'Target' and t.rr_final is not None]
+    avg_win_rr = round(sum(win_rr_vals) / len(win_rr_vals), 2) if win_rr_vals else 0
+    
     unique_weeks = len(set(t.date.strftime('%Y-%W') for t in trades))
     avg_weekly_trades = round(len(trades) / unique_weeks, 1) if unique_weeks > 0 else len(trades)
 
@@ -265,18 +265,36 @@ def statistics_page():
     avg_win = round(statistics.mean(wins), 2) if wins else 0
     avg_loss = round(statistics.mean(losses), 2) if losses else 0
     
-    # --- RISK OF RUIN (Fixato) ---
-    risk_of_ruin = {'10': 0, '20': 0, '100': 0}
+    # --- LONG vs SHORT ANALYSIS ---
+    long_trades = [t for t in active_trades if t.direction == 'Long']
+    short_trades = [t for t in active_trades if t.direction == 'Short']
     
+    long_stats = {
+        'total': len(long_trades),
+        'wins': len([t for t in long_trades if t.outcome == 'Target']),
+        'win_rate': 0
+    }
+    if long_stats['total'] > 0: 
+        long_stats['win_rate'] = round(long_stats['wins'] / long_stats['total'] * 100, 1)
+        
+    short_stats = {
+        'total': len(short_trades),
+        'wins': len([t for t in short_trades if t.outcome == 'Target']),
+        'win_rate': 0
+    }
+    if short_stats['total'] > 0: 
+        short_stats['win_rate'] = round(short_stats['wins'] / short_stats['total'] * 100, 1)
+
+    # --- RISK OF RUIN ---
+    risk_of_ruin = {'10': 0, '20': 0, '100': 0}
     if total_active > 5:
         if gross_loss == 0:
             risk_of_ruin = {'10': 0, '20': 0, '100': 0}
         else:
             win_prob = win_rate / 100
             loss_prob = 1 - win_prob
-            
             mc_drawdowns = []
-            for _ in range(1000): # Aumentato numero simulazioni
+            for _ in range(1000): 
                 sim_equity = 0
                 max_dd = 0
                 peak = 0
@@ -287,18 +305,15 @@ def statistics_page():
                     dd = peak - sim_equity
                     max_dd = max(max_dd, dd)
                 mc_drawdowns.append(max_dd)
-            
             risk_of_ruin['10'] = round(len([d for d in mc_drawdowns if d >= 10]) / 1000 * 100, 1)
             risk_of_ruin['20'] = round(len([d for d in mc_drawdowns if d >= 20]) / 1000 * 100, 1)
             risk_of_ruin['100'] = round(len([d for d in mc_drawdowns if d >= 100]) / 1000 * 100, 1)
 
-    # --- CALENDAR TOPSTEP STYLE ---
+    # --- CALENDAR ---
     month_trades = [t for t in trades if t.date.year == sel_year and t.date.month == sel_month]
     month_pl = sum([(t.result_percent or 0) for t in month_trades])
-    
     cal_obj = cal_module.Calendar(firstweekday=6) 
     month_days = cal_obj.monthdayscalendar(sel_year, sel_month)
-    
     calendar_data = []
     for week in month_days:
         week_stats = {'days': [], 'week_pl': 0, 'trade_count': 0}
@@ -315,7 +330,7 @@ def statistics_page():
         week_stats['week_pl'] = round(week_stats['week_pl'], 2)
         calendar_data.append(week_stats)
 
-    # --- TOP WEEKS ANALYSIS ---
+    # --- TOP WEEKS ---
     week_performance = {1: {'wins':0, 'total':0, 'pl':0}, 2: {'wins':0, 'total':0, 'pl':0}, 
                         3: {'wins':0, 'total':0, 'pl':0}, 4: {'wins':0, 'total':0, 'pl':0}, 5: {'wins':0, 'total':0, 'pl':0}}
     for t in trades:
@@ -337,7 +352,9 @@ def statistics_page():
         table = []
         for key, data in stats_dict.items():
             wr = round(data['wins']/data['total']*100, 1) if data['total'] > 0 else 0
-            table.append({'name': key, 'total': data['total'], 'win_rate': wr, 'result': round(data['pl'], 2)})
+            # Aggiungo il campo 'type' se presente nel dizionario, altrimenti None
+            row_type = data.get('type', None)
+            table.append({'name': key, 'total': data['total'], 'win_rate': wr, 'result': round(data['pl'], 2), 'type': row_type})
         table.sort(key=lambda x: x['result'], reverse=True)
         return table
 
@@ -365,31 +382,48 @@ def statistics_page():
                 if t.outcome == 'Target': align_stats[al]['wins'] += 1
     align_table = make_stats_table(align_stats)
 
-    # --- CONFLUENZE (PROS) ANALYSIS ---
-    pros_stats = {}
+    # --- CONFLUENZE UNIFICATE (PROS & CONS) ---
+    confluences_stats = {}
+    
+    # Processa Pros
     for t in active_trades:
         if t.selected_pros:
             for p in t.selected_pros.split(','):
                 p = p.strip()
                 if not p: continue
-                if p not in pros_stats: pros_stats[p] = {'total': 0, 'wins': 0, 'pl': 0}
-                pros_stats[p]['total'] += 1
-                pros_stats[p]['pl'] += (t.result_percent or 0)
-                if t.outcome == 'Target': pros_stats[p]['wins'] += 1
-    pros_table = make_stats_table(pros_stats)
-
-    # --- RISCHI (CONS) ANALYSIS - NUOVO ---
-    cons_stats = {}
+                if p not in confluences_stats: confluences_stats[p] = {'total': 0, 'wins': 0, 'pl': 0, 'type': 'Pro'}
+                confluences_stats[p]['total'] += 1
+                confluences_stats[p]['pl'] += (t.result_percent or 0)
+                if t.outcome == 'Target': confluences_stats[p]['wins'] += 1
+                
+    # Processa Cons
     for t in active_trades:
         if t.selected_cons:
             for c in t.selected_cons.split(','):
                 c = c.strip()
                 if not c: continue
-                if c not in cons_stats: cons_stats[c] = {'total': 0, 'wins': 0, 'pl': 0}
-                cons_stats[c]['total'] += 1
-                cons_stats[c]['pl'] += (t.result_percent or 0)
-                if t.outcome == 'Target': cons_stats[c]['wins'] += 1
-    cons_table = make_stats_table(cons_stats)
+                # Se per caso un nome esiste sia in pro che contro (raro), appendiamo (Rischio) al nome
+                key = c
+                if key in confluences_stats and confluences_stats[key]['type'] == 'Pro':
+                    key = c + " (Rischio)"
+                
+                if key not in confluences_stats: confluences_stats[key] = {'total': 0, 'wins': 0, 'pl': 0, 'type': 'Contro'}
+                confluences_stats[key]['total'] += 1
+                confluences_stats[key]['pl'] += (t.result_percent or 0)
+                if t.outcome == 'Target': confluences_stats[key]['wins'] += 1
+                
+    confluences_table = make_stats_table(confluences_stats)
+
+    # --- ANALISI EMOZIONI ---
+    emotions_stats = {}
+    for t in active_trades:
+        emo = t.emotions if t.emotions else "Non specificato"
+        if emo not in emotions_stats: emotions_stats[emo] = {'total': 0, 'wins': 0, 'pl': 0}
+        emotions_stats[emo]['total'] += 1
+        emotions_stats[emo]['pl'] += (t.result_percent or 0)
+        if t.outcome == 'Target': emotions_stats[emo]['wins'] += 1
+    emotions_table = make_stats_table(emotions_stats)
+
 
     # --- TOP DAYS ---
     day_map = {0: 'Lun', 1: 'Mar', 2: 'Mer', 3: 'Gio', 4: 'Ven', 5: 'Sab', 6: 'Dom'}
@@ -439,9 +473,11 @@ def statistics_page():
     return render_template('statistics.html', no_data=False, user=current_user, admin_view=admin_view,
                            win_rate=win_rate, profit_factor=profit_factor, net_result=net_result, 
                            avg_weekly_trades=avg_weekly_trades, sharpe_ratio=sharpe_ratio, risk_of_ruin=risk_of_ruin,
+                           avg_win_rr=avg_win_rr, # Passato al template
+                           long_stats=long_stats, short_stats=short_stats, # Dati grafico torta
                            total_active=total_active, total_trades=len(trades), num_wins=num_wins, num_losses=num_losses,
                            tf_table=tf_table, align_table=align_table, day_table=day_table, week_table=week_table,
-                           pros_table=pros_table, cons_table=cons_table,
+                           confluences_table=confluences_table, emotions_table=emotions_table, # Nuove tabelle
                            chart_labels=json.dumps(chart_labels), chart_data=json.dumps(chart_data),
                            mc_simulations=json.dumps(mc_simulations), projection_data=json.dumps(projection_data),
                            calendar_data=calendar_data, month_pl=month_pl,
