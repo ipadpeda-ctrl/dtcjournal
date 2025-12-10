@@ -166,7 +166,10 @@
                         <td class="px-4 py-3 font-bold {% if trade.result_percent > 0 %}text-green-500{% elif trade.result_percent < 0 %}text-red-500{% endif %}">{{ trade.result_percent }}%</td>
                         <td class="px-4 py-3 text-center">
                             {% if trade.screen_pre %}
-                                {% for link in trade.screen_pre.split(',') %}{% if link %}<a href="{{link}}" target="_blank" class="inline-block w-6 h-6 bg-blue-100 text-blue-600 rounded-full text-center hover:bg-blue-600 hover:text-white transition leading-6">↗</a>{% endif %}{% endfor %}
+                                {% set links = trade.screen_pre.split(',') %}
+                                <button onclick="openGallery(['{{ links[0] }}'{% if links|length > 1 %},'{{ links[1] }}'{% endif %}], 0)" class="inline-block px-2 py-1 bg-blue-100 text-blue-600 rounded text-xs font-bold hover:bg-blue-600 hover:text-white transition">
+                                    IMG 📷
+                                </button>
                             {% endif %}
                         </td>
                         <td class="px-4 py-3 text-right">
@@ -184,6 +187,20 @@
             <span class="px-3 py-1 text-gray-500 dark:text-gray-400">Pag {{ pagination.page }}</span>
             {% if pagination.has_next %}<a href="{{ url_for('dashboard', page=pagination.next_num, **request.args) }}" class="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition">Next</a>{% endif %}
         </div>
+    </div>
+
+    <div id="imageModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-95 flex items-center justify-center">
+        <button onclick="closeGallery()" class="absolute top-4 right-4 text-white text-4xl font-bold hover:text-gray-400">&times;</button>
+        <button onclick="changeImage(-1)" class="absolute left-4 text-white text-4xl font-bold hover:text-gray-400 p-4">❮</button>
+        
+        <div class="max-w-[90%] max-h-[90%]">
+             <img id="modalImage" src="" class="max-w-full max-h-[85vh] object-contain mx-auto rounded border border-gray-700">
+             <div class="text-center mt-4">
+                 <a id="modalLinkOriginal" href="#" target="_blank" class="text-blue-400 hover:underline text-sm">Apri immagine originale ↗</a>
+             </div>
+        </div>
+
+        <button onclick="changeImage(1)" class="absolute right-4 text-white text-4xl font-bold hover:text-gray-400 p-4">❯</button>
     </div>
 
     <script>
@@ -228,6 +245,45 @@
                 if(el) el.addEventListener('input', calculateStats);
                 if(el) el.addEventListener('change', calculateStats);
             });
+        });
+
+        // --- GALLERY LOGIC ---
+        let currentImages = [];
+        let currentIndex = 0;
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        const modalLink = document.getElementById('modalLinkOriginal');
+
+        function openGallery(images, index) {
+            currentImages = images;
+            currentIndex = index;
+            if(currentImages.length > 0) {
+                updateModalImage();
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeGallery() {
+            modal.classList.add('hidden');
+            modalImg.src = "";
+        }
+
+        function changeImage(step) {
+            currentIndex += step;
+            if(currentIndex < 0) currentIndex = currentImages.length - 1;
+            if(currentIndex >= currentImages.length) currentIndex = 0;
+            updateModalImage();
+        }
+
+        function updateModalImage() {
+            const src = currentImages[currentIndex];
+            modalImg.src = src;
+            modalLink.href = src;
+        }
+
+        // Close modal on outside click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeGallery();
         });
     </script>
 </body>

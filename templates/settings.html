@@ -10,7 +10,7 @@
 
     <div class="max-w-6xl mx-auto">
         <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold">🛠️ Il Mio Setup & Regole</h1>
+            <h1 class="text-3xl font-bold">🛠️ Setup Operativo</h1>
             <a href="/dashboard" class="text-blue-600 dark:text-blue-400 hover:underline">← Torna al Dashboard</a>
         </div>
 
@@ -23,19 +23,8 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                <div class="bg-white dark:bg-gray-800 p-6 rounded shadow border-l-4 border-green-500">
-                    <h2 class="text-xl font-bold mb-4 text-green-700 dark:text-green-400">Checklist Operativa</h2>
-                    <textarea name="trading_rules" class="w-full h-64 p-4 border dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 dark:text-white font-mono text-sm">{{ user.trading_rules }}</textarea>
-                </div>
-                <div class="bg-white dark:bg-gray-800 p-6 rounded shadow border-l-4 border-red-500">
-                    <h2 class="text-xl font-bold mb-4 text-red-700 dark:text-red-400">Gestione del Rischio</h2>
-                    <textarea name="risk_rules" class="w-full h-64 p-4 border dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 dark:text-white font-mono text-sm">{{ user.risk_rules }}</textarea>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 <div class="bg-white dark:bg-gray-800 p-6 rounded shadow border border-gray-200 dark:border-gray-700">
-                    <h3 class="font-bold text-green-700 mb-4 text-center">LISTA PRO (Conferme)</h3>
+                    <h3 class="font-bold text-green-700 mb-4 text-center uppercase">Lista Conferme (Pro)</h3>
                     {% for item in user_pros %}
                     <div class="mb-2 flex items-center">
                         <span class="text-gray-400 mr-2">{{ loop.index }}.</span>
@@ -44,7 +33,7 @@
                     {% endfor %}
                 </div>
                 <div class="bg-white dark:bg-gray-800 p-6 rounded shadow border border-gray-200 dark:border-gray-700">
-                    <h3 class="font-bold text-red-700 mb-4 text-center">LISTA CONTRO (Rischi)</h3>
+                    <h3 class="font-bold text-red-700 mb-4 text-center uppercase">Lista Rischi (Contro)</h3>
                     {% for item in user_cons %}
                     <div class="mb-2 flex items-center">
                         <span class="text-gray-400 mr-2">{{ loop.index }}.</span>
@@ -55,7 +44,7 @@
             </div>
 
             <div class="text-center">
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-12 rounded shadow-lg transition transform hover:scale-105">Salva Tutto</button>
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-12 rounded shadow-lg transition transform hover:scale-105">Salva Setup</button>
             </div>
         </form>
     </div>
