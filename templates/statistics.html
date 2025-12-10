@@ -7,7 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>tailwind.config = { darkMode: 'class' }</script>
     <style>
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        /* Modificato: 8 colonne per includere il Totale Settimanale */
+        .calendar-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; min-width: 600px; }
         .cal-cell { min-height: 80px; transition: all 0.2s; }
         .cal-cell:hover { transform: scale(1.02); z-index: 10; }
     </style>
@@ -28,6 +29,10 @@
                  <div class="bg-white dark:bg-gray-800 px-4 py-2 rounded shadow text-center border-l-4 border-indigo-500">
                     <span class="text-xs text-gray-500 uppercase block">R:R Medio (Win)</span>
                     <span class="font-bold text-xl">{{ avg_win_rr }}</span>
+                </div>
+                <div class="bg-white dark:bg-gray-800 px-4 py-2 rounded shadow text-center">
+                    <span class="text-xs text-gray-500 uppercase block">Trades/Giorno</span>
+                    <span class="font-bold text-xl">{{ avg_daily_trades }}</span>
                 </div>
                 <div class="bg-white dark:bg-gray-800 px-4 py-2 rounded shadow text-center">
                     <span class="text-xs text-gray-500 uppercase block">Sharpe Ratio</span>
@@ -149,9 +154,9 @@
                 </div>
             </div>
             
-            <div class="bg-gray-800 dark:bg-gray-900 rounded-lg p-4">
+            <div class="bg-gray-800 dark:bg-gray-900 rounded-lg p-4 overflow-x-auto">
                 <div class="calendar-grid mb-2 text-center text-gray-400 text-sm font-bold uppercase">
-                    <div>Dom</div><div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div>
+                    <div>Dom</div><div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div class="text-yellow-500">TOT</div>
                 </div>
                 
                 {% for week in calendar_data %}
@@ -171,6 +176,11 @@
                         <div class="cal-cell bg-transparent"></div>
                         {% endif %}
                     {% endfor %}
+                    
+                    <div class="cal-cell p-2 rounded flex flex-col justify-center items-center border border-gray-700 bg-gray-900">
+                         <span class="text-[10px] text-gray-400 uppercase">W. P&L</span>
+                         <span class="font-bold text-sm {{ 'text-green-400' if week.week_pl > 0 else 'text-red-400' }}">{{ week.week_pl }}%</span>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
